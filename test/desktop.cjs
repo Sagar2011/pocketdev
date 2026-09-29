@@ -124,15 +124,26 @@ app.whenReady().then(async () => {
     await pause(5100);
     const node = process.env.POCKETDEV_TEST_NODE;
     assert.ok(node, 'Set POCKETDEV_TEST_NODE to your Node executable');
-    const send = event => {
+    const send = (event, extra = {}) => {
       const result = spawnSync(node, [path.join(__dirname, '../plugin/scripts/hook.cjs')], {
-        input: JSON.stringify({ session_id: 'desktop-test', hook_event_name: event, tool_name: 'Bash' }),
+        input: JSON.stringify({ session_id: 'desktop-test', hook_event_name: event, tool_name: 'Bash', ...extra }),
         env: process.env, encoding: 'utf8'
       });
       assert.equal(result.status, 0); assert.equal(result.stdout, '');
     };
+    await settings.webContents.executeJavaScript('window.pocketdev.preview("idle")');
     send('PermissionRequest'); await expectState(avatar, 'permission');
-    send('PostToolUse'); await expectState(avatar, 'working');
+    await settings.webContents.executeJavaScript('window.pocketdev.preview("idle")');
+    assert.equal(await avatar.webContents.executeJavaScript('document.body.dataset.state'), 'permission', 'Preview cannot mask live permission');
+    send('PostToolUse', {agent_id: 'unrelated-agent', tool_name: 'Read'});
+    await pause(850); await expectState(avatar, 'permission');
+    await avatar.webContents.executeJavaScript('document.querySelector("#dismiss").click()');
+    await expectState(avatar, 'idle');
+    send('Notification', {notification_type: 'permission_prompt'});
+    await pause(850); await expectState(avatar, 'idle');
+    send('PermissionRequest', {tool_input: {command: 'new request'}}); await expectState(avatar, 'permission');
+    send('PostToolUse', {tool_input: {command: 'new request'}}); await expectState(avatar, 'working');
+    await settings.webContents.executeJavaScript('window.pocketdev.preview("permission")');
     send('Stop'); await expectState(avatar, 'done');
     send('SessionEnd'); await expectState(avatar, 'idle');
     assert.equal(await avatar.webContents.executeJavaScript('document.querySelector("#status").textContent'), 'On a little break');

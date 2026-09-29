@@ -63,6 +63,7 @@ If the terminal works but the desktop Code tab does not, the desktop app may not
 
 ## Mute, disable, or uninstall
 
+- **Dismiss a current reminder:** click **×** on the avatar, or right-click → **Dismiss current reminder (no approval)**. This clears the current reminders locally; it never approves or denies anything in Claude. A new request can alert again. Dismissal lasts until the companion exits.
 - **Mute sounds:** click the avatar’s **···** and turn off **Permission knocks**, **Typing sound**, and/or **Done chime**. The avatar keeps showing activity.
 - **Stop animations:** turn off **Animate** in settings.
 - **Close the companion:** right-click the avatar and choose **Quit PocketDev**. If running through `npm start`, you can also press **Ctrl+C** in that terminal. This immediately stops the avatar and audio; the Claude plugin remains installed.
@@ -134,7 +135,7 @@ Thumbs-up returns to the snack break after six seconds. Session-end events clear
 ## Privacy and local files
 
 - Activity is written to `~/.pocketdev/sessions/` (`%USERPROFILE%\.pocketdev\sessions` on Windows).
-- The plugin saves only a state, timestamp, and sanitized tool name under a hashed session filename. It does not save commands, prompts, working directories, or transcripts.
+- The plugin saves status, timestamps, a sanitized tool name, and hashed session/agent/request identifiers to correlate permission requests with tool completions. It does not save commands, prompts, working directories, or transcripts.
 - Preferences and avatar packs live under `~/.pocketdev/`. Closed/stale session files are pruned after one day while the companion runs.
 - The original photo and API key remain in memory while customizing. PocketDev does not persist either. Closing customization clears the selected photo and stops active generation.
 - Clicking Generate sends the selected photo to **OpenAI**. The companion makes no other application-level network requests. Provider processing and retention are governed by that provider's policies.
@@ -199,6 +200,8 @@ Code and the original default vector artwork are [MIT licensed](LICENSE). Upload
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for small changes and releases. Technical references: [Claude hooks](https://code.claude.com/docs/en/hooks), [Claude plugin reference](https://code.claude.com/docs/en/plugins-reference), [OpenAI image edits](https://developers.openai.com/api/reference/resources/images/methods/edit), and [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
 
-Permission requests repeat double knocks every six seconds until Claude clears the request (or the session ends/expires). Volume increases for the first three rounds, then stays capped. Working plays quiet typing; completion plays one short chime. Settings has independent **Permission knocks**, **Typing sound**, and **Done chime** toggles. Existing muted preferences remain muted. Existing avatar sizes are preserved; use the size slider to choose 120 px.
+Permission requests repeat double knocks every six seconds until a matching tool completion, turn/session reset, expiry, or local dismissal. Volume increases for the first three rounds, then stays capped. Working plays quiet typing; completion plays one short chime. Settings has independent **Permission knocks**, **Typing sound**, and **Done chime** toggles. Existing muted preferences remain muted. Existing avatar sizes are preserved; use the size slider to choose 120 px.
 
 Idle stays silent: the default buddy sways, moves his head and legs, and eats chips; custom idle images gently sway. Enable **Animate** to see motion (system Reduce Motion is respected). **Preview permission alert** runs for 30 seconds so you can hear repeated knocks; clicking another pose ends the preview early.
+
+Claude does not emit a hook for every approval or interruption. After approving a long-running tool or pressing Escape in Claude, click the avatar’s **×** if the reminder continues; PocketDev cannot promise immediate automatic detection. Pending permissions are tracked separately from unrelated tools. Live permissions take priority over previews, and new live activity ends a preview.

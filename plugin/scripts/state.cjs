@@ -1,3 +1,5 @@
+const fs = require('node:fs');
+const { createHash } = require('node:crypto');
 const path = require('node:path');
 const os = require('node:os');
 
@@ -34,11 +36,7 @@ function displayState(events, now = Date.now()) {
   return { state, message: messages[state], connected: true };
 }
 
-module.exports = { home, fromHook, displayState };
-
 // Separate tool completions from permission requests: another tool cannot clear one.
-const fs = require('node:fs');
-const { createHash } = require('node:crypto');
 const hash = value => createHash('sha256').update(value).digest('hex');
 function sorted(value) {
   if (Array.isArray(value)) return value.map(sorted);
@@ -82,6 +80,7 @@ function readEvents(root, now = Date.now()) {
         if (!stat.isFile() || stat.size > 4096) continue;
         if (now - stat.mtimeMs > 86400000) { fs.unlinkSync(target); continue; }
         const event = JSON.parse(fs.readFileSync(target, 'utf8'));
+        if (event?.session !== undefined && (!['session', 'agent', 'request'].every(key => typeof event[key] === 'string' && /^[a-f0-9]{64}$/.test(event[key])) || !['boundary', 'permission', 'notification', 'tool', 'activity'].includes(event.kind) || typeof event.completed !== 'boolean' || typeof event.boundary !== 'boolean')) continue;
         if (event && states.has(event.state) && Number.isFinite(event.at) && event.at <= now + 5000 && now - event.at < 30 * 60 * 1000) events.push(event);
       } catch { /* Malformed or concurrently replaced event. */ }
     }
@@ -89,6 +88,7 @@ function readEvents(root, now = Date.now()) {
   return events;
 }
 function resolvedEvents(events) {
+  events = events.filter(event => event && states.has(event.state) && Number.isFinite(event.at));
   const boundaries = new Map(), ended = new Map(), completed = new Map(), anyCompleted = new Map();
   const latest = (map, key, at) => map.set(key, Math.max(map.get(key) ?? -Infinity, at));
   for (const event of events) {
@@ -118,7 +118,4 @@ function visibleEvents(events, dismissed) {
     return event.kind !== 'notification' || events.some(other => other.session === event.session && other.agent === event.agent && other.kind !== 'notification' && other.at > cutoff);
   });
 }
-module.exports.visibleEvents = visibleEvents;
-module.exports.writeEvent = writeEvent;
-module.exports.readEvents = readEvents;
-module.exports.resolvedEvents = resolvedEvents;
+module.exports = { home, fromHook, displayState, writeEvent, readEvents, resolvedEvents, visibleEvents };

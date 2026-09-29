@@ -172,6 +172,9 @@ test('session scanning does not hide a permission behind more than 200 ended fil
     const pending = path.join(dir, `${'f'.repeat(64)}.json`);
     fs.writeFileSync(pending, JSON.stringify({state:'permission',at:Date.now()}));
     assert.equal(displayState(readEvents(root)).state,'permission');
+    const malformed = path.join(dir, `${'d'.repeat(64)}.json`);
+    fs.writeFileSync(malformed, JSON.stringify({state:'permission',at:Date.now(),session:{toString:42}}));
+    assert.equal(readEvents(root).length,206, 'Malformed correlation metadata is ignored');
     const stale = path.join(dir, `${'e'.repeat(64)}.json`);
     fs.writeFileSync(stale, '{}'); fs.utimesSync(stale, new Date(0), new Date(0));
     readEvents(root); assert.equal(fs.existsSync(stale),false);
