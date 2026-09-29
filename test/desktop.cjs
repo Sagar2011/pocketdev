@@ -50,6 +50,16 @@ app.whenReady().then(async () => {
     assert.equal(await avatar.webContents.executeJavaScript('document.body.classList.contains("reduced-motion")'), true);
     assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#sound").checked'), false);
     await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 120, motion: true})');
+    // Test both OS motion preferences explicitly, independent of the CI runner's settings.
+    avatar.webContents.debugger.attach('1.3');
+    const motionPreference = value => avatar.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value }]
+    });
+    await motionPreference('reduce');
+    await settings.webContents.executeJavaScript('window.pocketdev.preview("working")');
+    await expectState(avatar, 'working');
+    assert.equal(await avatar.webContents.executeJavaScript('getComputedStyle(document.querySelector(".typing-left")).animationName'), 'none', 'OS reduced motion disables typing');
+    await motionPreference('no-preference');
     for (const state of ['waiting', 'working', 'done', 'permission', 'idle']) {
       await settings.webContents.executeJavaScript(`window.pocketdev.preview(${JSON.stringify(state)})`);
       await pause(250);
