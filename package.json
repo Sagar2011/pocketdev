@@ -24,7 +24,8 @@
   },
   "devDependencies": {
     "electron": "44.4.5",
-    "electron-builder": "26.15.3"
+    "electron-builder": "26.15.3",
+    "prettier": "^3.9.9"
   },
   "build": {
     "appId": "dev.pocketdev.companion",
@@ -62,6 +63,5 @@
     "npm": "12.0.0"
   },
   "dependencies": {
-    "prettier": "^3.9.9"
   }
 }
