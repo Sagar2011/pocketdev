@@ -120,14 +120,14 @@ Click **Import poses** and select the three required files, plus `idle.png` if a
 
 ## What each state means
 
-| State | Meaning |
-| --- | --- |
-| Notepad knock | Waiting for your answer or permission |
-| Seated with chips | No active work, or ready for the next prompt |
-| Rapid typing and head scratch | Claude is processing a prompt or using a tool |
-| Permission bubble | Claude's permission request needs your attention |
-| Thumbs-up | Claude finished responding; this does **not** prove its task or tests succeeded |
-| Needs attention | A tool or response failed |
+| State                         | Meaning                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| Notepad knock                 | Waiting for your answer or permission                                           |
+| Seated with chips             | No active work, or ready for the next prompt                                    |
+| Rapid typing and head scratch | Claude is processing a prompt or using a tool                                   |
+| Permission bubble             | Claude's permission request needs your attention                                |
+| Thumbs-up                     | Claude finished responding; this does **not** prove its task or tests succeeded |
+| Needs attention               | A tool or response failed                                                       |
 
 Thumbs-up returns to the snack break after six seconds. Session-end events clear the session. Events expire after 30 minutes without an update, so a crashed terminal cannot leave the avatar working forever; a very long quiet operation may therefore show the disconnected state. When more than one local session exists, permission requests take priority, otherwise the most recent event wins. PocketDev does not launch or coordinate agents.
 
