@@ -25,6 +25,7 @@
     <div class="preferences"><label for="size">Avatar size</label><input id="size" type="range" min="48" max="120" step="8" value="120"><output id="size-value" for="size">120 px</output><label class="toggle"><input id="motion" type="checkbox" checked> Animate</label><label class="toggle"><input id="sound" type="checkbox" checked> Permission knocks</label><label class="toggle"><input id="workingSound" type="checkbox" checked> Typing sound</label><label class="toggle"><input id="doneSound" type="checkbox" checked> Done chime</label></div>
   </section>
   <details><summary>Help · Mute, disable, or uninstall</summary>
+    <p>Click the avatar’s <strong>×</strong> to dismiss current reminders without approving anything in Claude. New requests can alert again. Claude does not report every approval or interruption: use this after approving a long-running command or cancelling in Claude if the reminder continues.</p>
     <p>Turn off the sound toggles above to mute individual sounds, or Animate to stop movement.</p>
     <p>To stop PocketDev immediately, right-click the avatar and choose <strong>Quit PocketDev</strong>. When running with npm start, Ctrl+C in its terminal also stops it.</p>
     <p>Disable the installed Claude plugin from a terminal:</p><code>claude plugin disable pocketdev@pocketdev-local</code>
