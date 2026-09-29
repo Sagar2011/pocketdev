@@ -88,9 +88,9 @@ test('activity sounds repeat, cap volume, chime once, mute, and cancel pending a
   const timers = new Map(), gains = [], sources = [];
   let next = 0;
   class AudioContext {
-    sampleRate = 1000; currentTime = 0; destination = {};
+    sampleRate = 48000; currentTime = 0; destination = {};
     async resume() {}
-    createBuffer(channels, length) { return { getChannelData: () => new Float32Array(length) }; }
+    createBuffer(channels, length) { const data = new Float32Array(length); return { getChannelData: () => data }; }
     createBufferSource() { const source = { connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; } }; sources.push(source); return source; }
     createBiquadFilter() { return { frequency: {}, connect() {}, disconnect() {} }; }
     createGain() { const gain = { gain: {}, connect() {}, disconnect() {} }; gains.push(gain); return gain; }
@@ -107,7 +107,11 @@ test('activity sounds repeat, cap volume, chime once, mute, and cancel pending a
     const [id, pending] = [...timers][0]; assert.equal(pending.delay, 6000);
     timers.delete(id); pending.fn(); await settle();
   }
-  assert.deepEqual(gains.map(g => Number(g.gain.value.toFixed(2))), [0.12, 0.12, 0.23, 0.23, 0.34, 0.34, 0.34, 0.34, 0.34, 0.34]);
+  assert.deepEqual(gains.map(g => Number(g.gain.value.toFixed(2))), [0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]);
+  const knockSamples = sources[0].buffer.getChannelData(0);
+  const rms = Math.sqrt(knockSamples.reduce((sum, value) => sum + value * value, 0) / knockSamples.length);
+  assert.ok(rms > 0.13, 'Knock has audible body instead of a faint noise tick');
+  assert.ok(knockSamples.every(value => Number.isFinite(value) && Math.abs(value) <= 1), 'Knock samples remain bounded');
   sounds.update('idle', prefs); assert.equal(timers.size, 0); assert.ok(sources.every(s => s.stopped));
   sounds.update('working', prefs); await settle();
   assert.equal(gains.at(-1).gain.value, 0.035); assert.equal(timers.size, 1);
