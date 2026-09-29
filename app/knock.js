@@ -1,41 +1,45 @@
-// Three increasingly insistent double knocks per permission request.
-window.createPermissionKnocks = function () {
-  let context, active = false, epoch = 0;
-  const timers = new Set(), sources = new Set();
+// Native Web Audio: repeating knocks/typing and a one-shot completion chime.
+window.createActivitySounds = function () {
+  let context, current = '', epoch = 0, timer;
+  const sources = new Set();
   function stop() {
-    active = false; epoch++;
-    for (const timer of timers) clearTimeout(timer);
-    timers.clear();
+    current = ''; epoch++;
+    clearTimeout(timer);
     for (const source of sources) { source.stop(); source.disconnect(); }
     sources.clear();
   }
-  async function round(volume, token) {
+  async function play(state, round, token) {
     try {
       context ||= new AudioContext();
       await context.resume();
-      if (!active || token !== epoch) return;
-      for (const delay of [0, 0.18]) {
-        const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * 0.09), context.sampleRate);
+      if (token !== epoch) return;
+      const done = state === 'done', knock = state === 'permission';
+      const volume = knock ? Math.min(0.12 + round * 0.11, 0.34) : done ? 0.12 : 0.035;
+      const duration = done ? 0.3 : knock ? 0.09 : 0.025;
+      for (const [index, delay] of (done ? [0, 0.16] : knock ? [0, 0.18] : [0]).entries()) {
+        const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * duration), context.sampleRate);
         const samples = buffer.getChannelData(0);
-        for (let i = 0; i < samples.length; i++) samples[i] = (Math.random() * 2 - 1) * Math.exp(-i / (samples.length / 7));
+        for (let i = 0; i < samples.length; i++) {
+          const signal = done ? Math.sin(2 * Math.PI * (index ? 880 : 660) * i / context.sampleRate) : Math.random() * 2 - 1;
+          samples[i] = signal * Math.exp(-i / (samples.length / 7));
+        }
         const source = context.createBufferSource(), filter = context.createBiquadFilter(), gain = context.createGain();
-        source.buffer = buffer; filter.type = 'lowpass'; filter.frequency.value = 950; gain.gain.value = volume;
+        source.buffer = buffer; filter.type = 'lowpass'; filter.frequency.value = knock ? 950 : 2400; gain.gain.value = volume;
         source.connect(filter); filter.connect(gain); gain.connect(context.destination);
         sources.add(source);
         source.onended = () => { sources.delete(source); source.disconnect(); filter.disconnect(); gain.disconnect(); };
         source.start(context.currentTime + delay);
       }
-    } catch { /* Audio unavailable: the visible reminder still works. */ }
+    } catch { /* Audio unavailable: the visible status still works. */ }
+    if (token === epoch && state !== 'done') timer = setTimeout(() => play(state, round + 1, token), state === 'permission' ? 6000 : 160 + Math.random() * 160);
   }
   return {
-    update(state, enabled) {
-      if (state !== 'permission' || !enabled) { stop(); return; }
-      if (active) return;
-      active = true; const token = ++epoch;
-      [0.12, 0.22, 0.34].forEach((volume, index) => {
-        const timer = setTimeout(() => { timers.delete(timer); round(volume, token); }, index * 6000);
-        timers.add(timer);
-      });
+    update(state, prefs) {
+      const enabled = state === 'permission' ? prefs.sound : state === 'working' ? prefs.workingSound : state === 'done' ? prefs.doneSound : false;
+      const next = enabled ? state : '';
+      if (next === current) return;
+      stop(); current = next;
+      if (next) play(next, 0, epoch);
     },
     stop
   };

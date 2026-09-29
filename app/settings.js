@@ -7,7 +7,7 @@ function appearance(value) {
   for (const mascot of mascots) window.applyMascot(mascot, value.images, mascot.dataset.state);
   $('#size').value = value.size; $('#size-value').value = `${value.size} px`;
   $('#motion').checked = value.motion;
-  $('#sound').checked = value.sound;
+  for (const key of ['sound', 'workingSound', 'doneSound']) $(`#${key}`).checked = value[key];
   document.body.classList.toggle('reduced-motion', !value.motion);
   $('#data-path').textContent = value.dataPath;
 }
@@ -45,4 +45,4 @@ $('#size').addEventListener('input', () => { $('#size-value').value = `${$('#siz
 $('#size').addEventListener('change', attempt(() => window.pocketdev.preferences({ size: Number($('#size').value) })));
 $('#motion').addEventListener('change', attempt(() => window.pocketdev.preferences({ motion: $('#motion').checked })));
 
-$('#sound').addEventListener('change', attempt(() => window.pocketdev.preferences({ sound: $('#sound').checked })));
+for (const key of ['sound', 'workingSound', 'doneSound']) $(`#${key}`).addEventListener('change', attempt(() => window.pocketdev.preferences({ [key]: $(`#${key}`).checked })));

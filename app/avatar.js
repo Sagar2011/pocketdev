@@ -1,18 +1,18 @@
 const mascot = document.querySelector('#mascot');
 window.mountMascot(mascot);
-let images = {}, current = 'idle', sound = true;
-const knocks = window.createPermissionKnocks();
-window.addEventListener('pagehide', () => knocks.stop());
+let images = {}, current = 'idle', soundPrefs = {};
+const sounds = window.createActivitySounds();
+window.addEventListener('pagehide', () => sounds.stop());
 function appearance(value) {
   images = value.images;
-  sound = value.sound;
-  knocks.update(current, sound);
+  soundPrefs = value;
+  sounds.update(current, soundPrefs);
   document.body.classList.toggle('reduced-motion', !value.motion);
   window.applyMascot(mascot, images, current);
 }
 function status(value) {
   current = value.state;
-  knocks.update(current, sound);
+  sounds.update(current, soundPrefs);
   document.body.dataset.state = current;
   document.querySelector('#status').textContent = value.message;
   document.querySelector('#buddy').title = value.message;

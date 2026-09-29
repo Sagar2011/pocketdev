@@ -83,32 +83,41 @@ test('question prompts wait for input, irrelevant notifications do not overwrite
   assert.equal(fromHook({ hook_event_name: 'Stop' }), null);
 });
 
-test('permission knocks escalate once, cancel immediately, and respect mute', async () => {
+test('activity sounds repeat, cap volume, chime once, mute, and cancel pending audio', async () => {
   const vm = require('node:vm');
   const timers = new Map(), gains = [], sources = [];
   let next = 0;
   class AudioContext {
     sampleRate = 1000; currentTime = 0; destination = {};
     async resume() {}
-    createBuffer() { return { getChannelData: () => new Float32Array(90) }; }
+    createBuffer(channels, length) { return { getChannelData: () => new Float32Array(length) }; }
     createBufferSource() { const source = { connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; } }; sources.push(source); return source; }
     createBiquadFilter() { return { frequency: {}, connect() {}, disconnect() {} }; }
     createGain() { const gain = { gain: {}, connect() {}, disconnect() {} }; gains.push(gain); return gain; }
   }
   const sandbox = { window: {}, AudioContext, setTimeout(fn, delay) { timers.set(++next, {fn, delay}); return next; }, clearTimeout(id) { timers.delete(id); } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/knock.js'), 'utf8'), sandbox);
-  const knocks = sandbox.window.createPermissionKnocks();
-  knocks.update('permission', false); assert.equal(timers.size, 0);
-  knocks.update('waiting', true); assert.equal(timers.size, 0);
-  knocks.update('permission', true); knocks.update('permission', true);
-  assert.deepEqual([...timers.values()].map(t => t.delay), [0, 6000, 12000]);
-  for (const [id, {fn}] of [...timers]) { timers.delete(id); fn(); await new Promise(setImmediate); }
-  assert.deepEqual(gains.map(g => g.gain.value), [0.12, 0.12, 0.22, 0.22, 0.34, 0.34]);
-  knocks.update('working', true);
-  assert.ok(sources.every(s => s.stopped)); assert.equal(timers.size, 0);
-  knocks.update('permission', true); const [id, pending] = [...timers][0]; timers.delete(id); pending.fn();
-  knocks.update('idle', true); await new Promise(setImmediate);
-  assert.equal(sources.length, 6, 'permission clearing during resume prevents playback');
-  knocks.update('permission', true); knocks.update('permission', false);
-  assert.equal(timers.size, 0);
+  const sounds = sandbox.window.createActivitySounds();
+  const prefs = {sound: true, workingSound: true, doneSound: true};
+  const settle = () => new Promise(setImmediate);
+  sounds.update('permission', {sound: false}); await settle(); assert.equal(sources.length, 0);
+  sounds.update('permission', prefs); await settle();
+  sounds.update('permission', prefs); assert.equal(timers.size, 1);
+  for (let i = 0; i < 4; i++) {
+    const [id, pending] = [...timers][0]; assert.equal(pending.delay, 6000);
+    timers.delete(id); pending.fn(); await settle();
+  }
+  assert.deepEqual(gains.map(g => Number(g.gain.value.toFixed(2))), [0.12, 0.12, 0.23, 0.23, 0.34, 0.34, 0.34, 0.34, 0.34, 0.34]);
+  sounds.update('idle', prefs); assert.equal(timers.size, 0); assert.ok(sources.every(s => s.stopped));
+  sounds.update('working', prefs); await settle();
+  assert.equal(gains.at(-1).gain.value, 0.035); assert.equal(timers.size, 1);
+  sounds.update('done', prefs); await settle();
+  const count = sources.length; sounds.update('done', prefs); await settle();
+  assert.equal(sources.length, count); assert.equal(timers.size, 0);
+  sounds.update('working', prefs); sounds.update('idle', prefs); await settle();
+  assert.equal(sources.length, count, 'state clearing during resume prevents playback');
+  sounds.update('working', prefs); await settle();
+  sounds.update('working', {...prefs, workingSound: false}); assert.equal(timers.size, 0);
+  sounds.update('done', {...prefs, doneSound: false}); await settle();
+  assert.equal(sources.length, count + 1);
 });
