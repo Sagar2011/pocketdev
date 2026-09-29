@@ -45,7 +45,7 @@ app.whenReady().then(async () => {
     await pause(300);
     assert.equal(await avatar.webContents.executeJavaScript('typeof require'), 'undefined', 'Node is unavailable to renderer');
     assert.equal(await settings.webContents.executeJavaScript('document.querySelectorAll(".pose-card").length'), 4);
-    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 80, motion: false, sound: false})');
+    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 80, motion: false, sound: false, workingSound: false, doneSound: false})');
     assert.equal(avatar.getBounds().width, 80);
     assert.equal(await avatar.webContents.executeJavaScript('document.body.classList.contains("reduced-motion")'), true);
     assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#sound").checked'), false);
