@@ -1,6 +1,6 @@
 {
   "name": "pocketdev",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Connect Claude Code activity to your PocketDev desktop avatar. Requires the companion app and Node.js 22+.",
   "author": {
     "name": "Sagar",
