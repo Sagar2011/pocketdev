@@ -37,3 +37,5 @@ document.addEventListener("contextmenu", (event) => {
   event.preventDefault();
   window.pocketdev.menu();
 });
+
+document.querySelector("#dismiss").addEventListener("click", () => window.pocketdev.dismiss());

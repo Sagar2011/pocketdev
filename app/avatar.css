@@ -12,3 +12,7 @@ body[data-state="permission"] #buddy { border-color: #b99132; background: #fff6d
 body[data-state="error"] #buddy { border-color: #b26752; }
 body[data-state="permission"] #buddy::after, body[data-state="error"] #buddy::after { content: '!'; position: absolute; top: 0; right: 1px; width: 13px; height: 13px; display: grid; place-items: center; border-radius: 50%; background: #d0a443; color: #fff; font: bold 10px sans-serif; pointer-events: none; }
 body[data-state="error"] #buddy::after { background: #b26752; }
+
+#dismiss { position: absolute; top: 0; left: 0; -webkit-app-region: no-drag; border: 1px solid #bccab9; border-radius: 50%; background: #fcfcf4; color: #41574a; width: 20px; height: 20px; padding: 0; cursor: pointer; }
+body[data-state="idle"] #dismiss { display: none; }
+#dismiss:focus-visible { outline: 2px solid #315d49; }
