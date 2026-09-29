@@ -1,6 +1,15 @@
 {
   "name": "pocketdev-local",
-  "metadata": { "description": "The PocketDev animated desktop companion plugin." },
-  "owner": { "name": "PocketDev contributors" },
-  "plugins": [{ "name": "pocketdev", "source": "./plugin", "description": "Your tiny animated Claude Code companion", "version": "0.1.0" }]
+  "metadata": {
+    "description": "The PocketDev animated desktop companion plugin."
+  },
+  "owner": { "name": "Sagar" },
+  "plugins": [
+    {
+      "name": "pocketdev",
+      "source": "./plugin",
+      "description": "Your tiny animated Claude Code companion",
+      "version": "0.1.0"
+    }
+  ]
 }

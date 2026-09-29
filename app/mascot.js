@@ -1,5 +1,5 @@
 // Original SVG artwork, animated with CSS. No external assets or animation runtime.
-window.mountMascot = container => {
+window.mountMascot = (container) => {
   container.innerHTML = `<svg class="original" viewBox="0 0 240 240" role="img" aria-label="PocketDev mini developer">
     <defs>
       <linearGradient id="jacket" x2="1" y2="1"><stop stop-color="#555e65"/><stop offset="1" stop-color="#303a42"/></linearGradient>
@@ -89,18 +89,22 @@ window.mountMascot = container => {
     </g>
   </svg><img class="custom" alt="Your personalized mini avatar" hidden>`;
   // Multiple preview instances share the page; keep gradient references local.
-  const id = `buddy-${window.mountMascot.count = (window.mountMascot.count || 0) + 1}`;
-  for (const name of ['skin', 'jacket']) {
+  const id = `buddy-${(window.mountMascot.count = (window.mountMascot.count || 0) + 1)}`;
+  for (const name of ["skin", "jacket"]) {
     container.querySelector(`#${name}`).id = `${id}-${name}`;
-    for (const node of container.querySelectorAll(`[fill="url(#${name})"]`)) node.setAttribute('fill', `url(#${id}-${name})`);
+    for (const node of container.querySelectorAll(`[fill="url(#${name})"]`))
+      node.setAttribute("fill", `url(#${id}-${name})`);
   }
 };
 window.applyMascot = (container, images, state) => {
-  const pose = ['working', 'done', 'idle'].includes(state) ? state : 'waiting';
+  const pose = ["working", "done", "idle"].includes(state) ? state : "waiting";
   container.dataset.state = state;
-  const custom = container.querySelector('.custom');
-  const image = images?.[pose] || (pose === 'idle' ? images?.waiting : undefined);
+  const custom = container.querySelector(".custom");
+  const image =
+    images?.[pose] || (pose === "idle" ? images?.waiting : undefined);
   custom.hidden = !image;
-  container.querySelector('.original').classList.toggle('hidden', Boolean(image));
-  if (image && custom.getAttribute('src') !== image) custom.src = image;
+  container
+    .querySelector(".original")
+    .classList.toggle("hidden", Boolean(image));
+  if (image && custom.getAttribute("src") !== image) custom.src = image;
 };
