@@ -30,7 +30,7 @@ function displayState(events, now = Date.now()) {
   const event = live[0];
   if (!event) return { state: 'idle', message: 'On a little break', connected: false };
   const state = event.state === 'done' && now - event.at > 6000 ? 'idle' : event.state;
-  const messages = { idle: 'On a little break', waiting: 'Knock knock · Your input?', working: 'Working on it', permission: 'Knock knock · Permission?', done: 'Response finished', error: 'Needs attention' };
+  const messages = { idle: 'On a little break', waiting: 'Excuse me · Your input?', working: 'Working on it', permission: 'Excuse me · Permission?', done: 'Response finished', error: 'Needs attention' };
   return { state, message: messages[state], connected: true };
 }
 

@@ -82,3 +82,33 @@ test('question prompts wait for input, irrelevant notifications do not overwrite
   assert.equal(fromHook({ session_id: 'a', hook_event_name: 'StopFailure' }).state, 'error');
   assert.equal(fromHook({ hook_event_name: 'Stop' }), null);
 });
+
+test('permission knocks escalate once, cancel immediately, and respect mute', async () => {
+  const vm = require('node:vm');
+  const timers = new Map(), gains = [], sources = [];
+  let next = 0;
+  class AudioContext {
+    sampleRate = 1000; currentTime = 0; destination = {};
+    async resume() {}
+    createBuffer() { return { getChannelData: () => new Float32Array(90) }; }
+    createBufferSource() { const source = { connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; } }; sources.push(source); return source; }
+    createBiquadFilter() { return { frequency: {}, connect() {}, disconnect() {} }; }
+    createGain() { const gain = { gain: {}, connect() {}, disconnect() {} }; gains.push(gain); return gain; }
+  }
+  const sandbox = { window: {}, AudioContext, setTimeout(fn, delay) { timers.set(++next, {fn, delay}); return next; }, clearTimeout(id) { timers.delete(id); } };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/knock.js'), 'utf8'), sandbox);
+  const knocks = sandbox.window.createPermissionKnocks();
+  knocks.update('permission', false); assert.equal(timers.size, 0);
+  knocks.update('waiting', true); assert.equal(timers.size, 0);
+  knocks.update('permission', true); knocks.update('permission', true);
+  assert.deepEqual([...timers.values()].map(t => t.delay), [0, 6000, 12000]);
+  for (const [id, {fn}] of [...timers]) { timers.delete(id); fn(); await new Promise(setImmediate); }
+  assert.deepEqual(gains.map(g => g.gain.value), [0.12, 0.12, 0.22, 0.22, 0.34, 0.34]);
+  knocks.update('working', true);
+  assert.ok(sources.every(s => s.stopped)); assert.equal(timers.size, 0);
+  knocks.update('permission', true); const [id, pending] = [...timers][0]; timers.delete(id); pending.fn();
+  knocks.update('idle', true); await new Promise(setImmediate);
+  assert.equal(sources.length, 6, 'permission clearing during resume prevents playback');
+  knocks.update('permission', true); knocks.update('permission', false);
+  assert.equal(timers.size, 0);
+});

@@ -8,7 +8,7 @@ const { POSES, imageMime, generatePoses, savePose } = require('./generate.cjs');
 
 app.setName('PocketDev');
 let avatar, settings, photo, generation, timer, demo;
-let prefs = { size: 64, motion: true, avatarDir: null };
+let prefs = { size: 120, motion: true, sound: true, avatarDir: null };
 const root = home();
 const prefsFile = path.join(root, 'preferences.json');
 const page = name => pathToFileURL(path.join(__dirname, `${name}.html`)).href;
@@ -67,7 +67,7 @@ async function appearance() {
       } catch { /* Fall back to the original mascot if a pack is missing. */ }
     }
   }
-  return { size: prefs.size, motion: prefs.motion, images: ['waiting', 'working', 'done'].every(pose => images[pose]) ? images : {}, dataPath: root };
+  return { size: prefs.size, motion: prefs.motion, sound: prefs.sound, images: ['waiting', 'working', 'done'].every(pose => images[pose]) ? images : {}, dataPath: root };
 }
 
 async function broadcastAppearance() {
@@ -95,8 +95,9 @@ ipcMain.handle('menu', event => {
 });
 ipcMain.handle('preferences', async (event, update) => {
   guard(event, settings);
-  if (Number.isInteger(update?.size) && update.size >= 48 && update.size <= 96) prefs.size = update.size;
+  if (Number.isInteger(update?.size) && update.size >= 48 && update.size <= 120) prefs.size = update.size;
   if (typeof update?.motion === 'boolean') prefs.motion = update.motion;
+  if (typeof update?.sound === 'boolean') prefs.sound = update.sound;
   savePrefs(); resizeAvatar(); await broadcastAppearance();
 });
 ipcMain.handle('preview', (event, state) => {
@@ -176,8 +177,9 @@ else {
     fs.mkdirSync(path.join(root, 'sessions'), { recursive: true, mode: 0o700 });
     try {
       const saved = JSON.parse(fs.readFileSync(prefsFile, 'utf8'));
-      if (Number.isInteger(saved.size) && saved.size >= 48 && saved.size <= 96) prefs.size = saved.size;
+      if (Number.isInteger(saved.size) && saved.size >= 48 && saved.size <= 120) prefs.size = saved.size;
       if (typeof saved.motion === 'boolean') prefs.motion = saved.motion;
+      if (typeof saved.sound === 'boolean') prefs.sound = saved.sound;
       if (typeof saved.avatarDir === 'string' && /^(custom|import)-[a-zA-Z0-9]+$/.test(saved.avatarDir)) prefs.avatarDir = saved.avatarDir;
     } catch { /* First launch. */ }
     const area = screen.getPrimaryDisplay().workArea;

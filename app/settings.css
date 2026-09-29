@@ -49,7 +49,7 @@ input[type="password"] { width: 100%; padding: 11px 12px; background: #fbfaf5; b
 .text-button { background: none; border: 0; padding: 2px 0; color: #537258; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
 #message { font-size: 11px; overflow-wrap: anywhere; }
 #message.error { color: #a2533e; }
-.preferences { display: flex; align-items: center; gap: 13px; }
+.preferences { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; }
 .preferences label { margin: 0; white-space: nowrap; }
 input[type="range"] { flex: 1; min-width: 60px; accent-color: #50775c; }
 output { font-size: 10px; color: #77816f; white-space: nowrap; }

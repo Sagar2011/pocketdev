@@ -3,7 +3,7 @@ window.mountMascot = container => {
   container.innerHTML = `<svg class="original" viewBox="0 0 240 240" role="img" aria-label="PocketDev mini developer">
     <defs>
       <linearGradient id="jacket" x2="1" y2="1"><stop stop-color="#555e65"/><stop offset="1" stop-color="#303a42"/></linearGradient>
-      <linearGradient id="skin" x2="1" y2=".4"><stop stop-color="#dfb796"/><stop offset="1" stop-color="#c59574"/></linearGradient>
+      <radialGradient id="skin" cx=".35" cy=".3" r=".8"><stop stop-color="#e2bea4"/><stop offset=".55" stop-color="#cda385"/><stop offset="1" stop-color="#a87d63"/></radialGradient>
     </defs>
     <ellipse cx="120" cy="219" rx="58" ry="5" fill="#24363c" opacity=".1"/>
     <g class="character" stroke-linecap="round" stroke-linejoin="round">
@@ -22,22 +22,22 @@ window.mountMascot = container => {
       <g class="torso">
         <path d="M111 84 L111 102 L132 102 L132 83Z" fill="#bb8b6d"/>
         <path d="M93 100 L111 94 L132 94 L149 102 L144 155 Q120 162 94 154Z" fill="url(#jacket)" stroke="#303941" stroke-width="1.2"/>
-        <path d="M111 96 L120 104 L132 96 L132 147 L112 147Z" fill="#d8d8cf"/>
-        <path d="M109 96 L102 106 L113 118 L112 155 M134 96 L141 107 L129 118 L130 155" fill="none" stroke="#727b7d" stroke-width="1.3"/>
+        <path d="M112 97 Q122 104 131 97 L130 148 L113 148Z" fill="#b9bbb5"/>
+        <path d="M109 97 L111 110 L112 155 M134 97 L131 111 L130 155" fill="none" stroke="#727b7d" stroke-width="1.3"/>
         <path d="M99 137 L108 138 M135 138 L143 136" stroke="#202e38" stroke-width="1.4"/>
-        <path d="M139 109 L143 109" stroke="#a5c7bd" stroke-width="2.5"/>
+        <path d="M139 109 L143 109" stroke="#a5c7bd" stroke-width="2"/><path d="M97 117 L104 132 L98 146 M139 122 L135 140 L140 150" fill="none" stroke="#69727a" stroke-width=".8" opacity=".5"/>
       </g>
-      <g class="head">
+      <g class="head"><g class="face-detail">
         <ellipse cx="98" cy="60" rx="4" ry="7" fill="#ca9878"/><ellipse cx="144" cy="60" rx="4" ry="7" fill="#c19071"/>
         <path d="M99 43 Q98 27 119 26 Q141 26 144 43 L142 68 Q139 83 122 89 Q107 85 101 72Z" fill="url(#skin)"/>
         <path d="M99 58 Q90 34 104 25 Q117 15 134 25 Q151 29 145 56 L141 48 L138 37 Q121 44 105 38 L103 57Z" fill="#30383d"/>
         <path d="M105 30 Q119 24 135 30" fill="none" stroke="#4c5355" stroke-width="2"/>
         <path d="M105 52 L113 51 M129 51 L137 53" stroke="#594739" stroke-width="1.5"/>
-        <g class="eyes" fill="#303b40"><ellipse cx="110" cy="58" rx="1.7" ry="2.5"/><ellipse cx="133" cy="58" rx="1.7" ry="2.5"/></g>
-        <path d="M122 57 L119 68 L123 69" stroke="#ac7e62" stroke-width="1" fill="none"/>
-        <path class="mouth" d="M116 76 Q122 79 128 75" fill="none" stroke="#775647" stroke-width="1.4"/>
+        <g class="eyes"><path d="M105 58 Q110 54 115 58 Q110 61 105 58 M128 58 Q133 54 138 58 Q133 61 128 58" fill="#eee9df" stroke="#776352" stroke-width=".7"/><g fill="#39413f"><ellipse cx="110" cy="58" rx="1.5" ry="1.9"/><ellipse cx="133" cy="58" rx="1.5" ry="1.9"/></g></g>
+        <path d="M121 56 L118 67 Q121 71 125 67" fill="#bd9175" stroke="#ad8067" stroke-width=".6"/><path d="M107 65 Q110 68 114 66 M130 66 Q135 68 138 64" fill="none" stroke="#b88d73" stroke-width=".7"/>
+        <path class="mouth" d="M116 76 Q122 77.5 128 75.5" fill="none" stroke="#775647" stroke-width="1.4"/>
         <path d="M106 73 Q109 83 121 86 Q134 82 138 72" fill="none" stroke="#7f7163" stroke-width="2" opacity=".35"/>
-      </g>
+      </g></g>
       <g class="pose pose-waiting">
         <path d="M95 104 Q81 117 92 141 L104 147" stroke="#424e57" stroke-width="13" fill="none"/>
         <g class="notepad"><rect x="98" y="125" width="37" height="49" rx="2" fill="#ede9dc" stroke="#a4a598" stroke-width="1" transform="rotate(-8 116 150)"/>
