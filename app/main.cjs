@@ -103,7 +103,7 @@ ipcMain.handle('preferences', async (event, update) => {
 ipcMain.handle('preview', (event, state) => {
   guard(event, settings);
   if (!['idle', 'waiting', 'working', 'done', 'permission', 'error'].includes(state)) throw new Error('Unknown state.');
-  demo = { state, until: Date.now() + 5000 };
+  demo = { state, until: Date.now() + (state === 'permission' ? 30000 : 5000) };
   avatar.webContents.send('status', currentState());
 });
 ipcMain.handle('photo', async event => {
