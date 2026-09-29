@@ -38,4 +38,6 @@ document.addEventListener("contextmenu", (event) => {
   window.pocketdev.menu();
 });
 
-document.querySelector("#dismiss").addEventListener("click", () => window.pocketdev.dismiss());
+document
+  .querySelector("#dismiss")
+  .addEventListener("click", () => window.pocketdev.dismiss());

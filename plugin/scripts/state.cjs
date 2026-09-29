@@ -81,7 +81,7 @@ function readEvents(root, now = Date.now()) {
         if (now - stat.mtimeMs > 86400000) { fs.unlinkSync(target); continue; }
         const event = JSON.parse(fs.readFileSync(target, 'utf8'));
         if (event?.session !== undefined && (!['session', 'agent', 'request'].every(key => typeof event[key] === 'string' && /^[a-f0-9]{64}$/.test(event[key])) || !['boundary', 'permission', 'notification', 'tool', 'activity'].includes(event.kind) || typeof event.completed !== 'boolean' || typeof event.boundary !== 'boolean')) continue;
-        if (event && states.has(event.state) && Number.isFinite(event.at) && event.at <= now + 5000 && now - event.at < 30 * 60 * 1000) events.push(event);
+        if (event && states.has(event.state) && Number.isFinite(event.at) && event.at <= now + 5000 && now - event.at < 30 * 60 * 1000) events.push(event.session === undefined ? { state: event.state, at: event.at, tool: typeof event.tool === 'string' ? event.tool : '' } : event);
       } catch { /* Malformed or concurrently replaced event. */ }
     }
   } catch { /* No session yet. */ }
