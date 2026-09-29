@@ -40,21 +40,27 @@ app.whenReady().then(async () => {
       await pause(100);
     }
     assert.ok(avatar && settings, 'Both windows load');
-    assert.equal(avatar.getBounds().width, 64);
-    assert.equal(avatar.getBounds().height, 64);
+    assert.equal(avatar.getBounds().width, 120);
+    assert.equal(avatar.getBounds().height, 120);
     await pause(300);
     assert.equal(await avatar.webContents.executeJavaScript('typeof require'), 'undefined', 'Node is unavailable to renderer');
     assert.equal(await settings.webContents.executeJavaScript('document.querySelectorAll(".pose-card").length'), 4);
-    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 80, motion: false})');
+    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 80, motion: false, sound: false})');
     assert.equal(avatar.getBounds().width, 80);
     assert.equal(await avatar.webContents.executeJavaScript('document.body.classList.contains("reduced-motion")'), true);
-    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 64, motion: true})');
+    assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#sound").checked'), false);
+    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 120, motion: true})');
     for (const state of ['waiting', 'working', 'done', 'permission', 'idle']) {
       await settings.webContents.executeJavaScript(`window.pocketdev.preview(${JSON.stringify(state)})`);
       await pause(250);
       const animation = { permission: ['.knocking-arm', 'knock'], working: ['.typing-left', 'typing'], done: ['.thumb-arm', 'thumbs'], idle: ['.snacking-arm', 'snack'] }[state];
       if (animation) assert.equal(await avatar.webContents.executeJavaScript(`getComputedStyle(document.querySelector(${JSON.stringify(animation[0])})).animationName`), animation[1]);
       assert.equal(await avatar.webContents.executeJavaScript('document.body.dataset.state'), state);
+      if (state === 'done') {
+        const motion = await avatar.webContents.executeJavaScript(`(() => { const el = document.querySelector('.character'); const a = el.getAnimations().find(a => a.animationName === 'celebrate'); a.pause(); a.currentTime = 640; return {y: new DOMMatrix(getComputedStyle(el).transform).m42, iterations: a.effect.getTiming().iterations}; })()`);
+        assert.ok(motion.y < -10, 'Done actually jumps above the ground');
+        assert.equal(motion.iterations, Infinity, 'Done continues animating');
+      }
       if (screenshotDir) {
         fs.mkdirSync(screenshotDir, { recursive: true });
         fs.writeFileSync(path.join(screenshotDir, `${state}.png`), (await avatar.webContents.capturePage()).toPNG());

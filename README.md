@@ -4,7 +4,7 @@ A little company while you code.
 
 ![PocketDev's permission, working, done, and idle poses in the customization window](docs/preview.png)
 
-PocketDev is a small, draggable desktop avatar that reacts to Claude Code. It knocks with a notepad when you are needed, types rapidly and scratches its head while working, gives a thumbs-up when Claude finishes responding, and sits eating chips while idle. Use the included animated character or make a miniature version of yourself from **one photo**.
+PocketDev is a small, draggable desktop avatar that reacts to Claude Code. It knocks with a notepad when you are needed, types rapidly and scratches its head while working, jumps with a thumbs-up when Claude finishes responding, and sits eating chips while idle. Use the included animated character or make a miniature version of yourself from **one photo**.
 
 **Early v0.1.0.** This repository contains the desktop companion and an installable Claude Code plugin. No hosted backend, telemetry, account system, or agent orchestration. Independent project; not affiliated with Anthropic or OpenAI.
 
@@ -12,7 +12,7 @@ PocketDev is a small, draggable desktop avatar that reacts to Claude Code. It kn
 
 - Understated mini developer with natural proportions: notepad knock, fast typing with occasional head scratches, thumbs-up, and seated snack breaks.
 - Permission and error indicators. Approvals remain in Claude.
-- A 64×64 px floating button, adjustable from 48–96 px. Drag to move; hover for status and the ··· menu. Permission/error states show a small attention badge. Reduced motion is supported.
+- A 120×120 px floating button, adjustable from 48–120 px. Drag to move; hover for status and the ··· menu. Permission/error states show a small attention badge. Reduced motion is supported.
 - One-photo customization using your own OpenAI API key, or free import of PNG poses.
 - Local activity bridge for Claude Code terminal and local desktop **Code** sessions.
 
@@ -29,7 +29,7 @@ PocketDev is a small, draggable desktop avatar that reacts to Claude Code. It kn
    npm start
    ```
 
-4. A button-sized avatar and its customization window appear. Old larger avatar sizes reset to the new 64 px default. Close the customization window to leave just the avatar. Click **···** on the avatar to reopen it; right-click **···** for Quit.
+4. A button-sized avatar and its customization window appear. Old larger avatar sizes reset to the new 120 px default. Close the customization window to leave just the avatar. Click **···** on the avatar to reopen it; right-click **···** for Quit.
 5. Connect the plugin using the instructions below.
 
 There is no dev web server to start. `npm start` launches the whole companion. The terminal remains occupied while running from source; a packaged app launches normally from your applications folder.
@@ -168,3 +168,5 @@ There is no frontend framework, database, web server, MCP server, or provider ab
 Code and the original default vector artwork are [MIT licensed](LICENSE). Uploaded photos and user-generated avatar packs are not part of this repository's license; use images you have permission to use and follow your generation provider's terms.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for small changes and releases. Technical references: [Claude hooks](https://code.claude.com/docs/en/hooks), [Claude plugin reference](https://code.claude.com/docs/en/plugins-reference), [OpenAI image edits](https://developers.openai.com/api/reference/resources/images/methods/edit), and [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
+
+Permission requests play three double knocks, six seconds apart, increasing to a capped volume. They stop as soon as permission clears. Turn off **Knock sound** in settings to mute them. Existing avatar sizes are preserved; use the size slider to choose 120 px.
