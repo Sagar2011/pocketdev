@@ -23,7 +23,15 @@ The local folder is ready to become a Git repository. Review it, run `git init`,
 4. Configure signing/notarization using [electron-builder signing documentation](https://www.electron.build/code-signing). Signing credentials belong in secrets, never the repository. The included manual CI build disables certificate discovery and creates unsigned test artifacts.
 5. Create a GitHub release, upload verified platform artifacts, and describe limitations. Keep the companion app download distinct from the Claude plugin installation instructions.
 
-No auto-updater or automatic release publishing is included. Add these only when a real release process needs them.
+### Draft release from GitHub Actions
+
+Push reviewed code and matching app/plugin/marketplace versions to `main`. Open **Actions → Release PocketDev → Run workflow**, select **main**, and choose one platform. macos-15 builds Apple Silicon, windows-2022 builds x64 Windows, and ubuntu-24.04 builds x64 Linux. Builds run one at a time and remain unsigned.
+
+The workflow runs unit tests (plus desktop smoke tests on macOS), builds the app, and attaches it to a **draft pre-release** using the built-in GitHub token. No personal token or Apple credentials are needed. Only the draft job has release-write permission; it does not execute repository code. Actions are pinned to commit hashes.
+
+Run another platform against the same commit to add its download to the same draft. Reruns may replace assets only on a draft from that exact commit. A published release or a tag/draft pointing to different code is never overwritten. For changes after a published release, increase versions first.
+
+Open the draft link in the workflow summary, manually test the downloads, review the notes, then click **Publish release**. Windows/Linux builds require their own manual smoke tests before advertising support. The workflow never publishes the draft automatically. There is no app auto-updater.
 
 ## Current validation boundary
 
