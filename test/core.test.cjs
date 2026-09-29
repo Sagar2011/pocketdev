@@ -110,11 +110,13 @@ test('activity sounds repeat, cap volume, chime once, mute, and cancel pending a
   assert.deepEqual(gains.map(g => Number(g.gain.value.toFixed(2))), [0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]);
   const knockSamples = sources[0].buffer.getChannelData(0);
   const rms = Math.sqrt(knockSamples.reduce((sum, value) => sum + value * value, 0) / knockSamples.length);
-  assert.ok(rms > 0.13, 'Knock has audible body instead of a faint noise tick');
+  assert.ok(rms > 0.08, 'Knock has audible body instead of a faint noise tick');
+  const energy = data => data.reduce((sum, value) => sum + value * value, 0) / data.length;
+  assert.ok(energy(knockSamples.slice(0, 960)) > 20 * energy(knockSamples.slice(-960)), 'Wood knock decays quickly without a ringing tail');
   assert.ok(knockSamples.every(value => Number.isFinite(value) && Math.abs(value) <= 1), 'Knock samples remain bounded');
   sounds.update('idle', prefs); assert.equal(timers.size, 0); assert.ok(sources.every(s => s.stopped));
   sounds.update('working', prefs); await settle();
-  assert.equal(gains.at(-1).gain.value, 0.035); assert.equal(timers.size, 1);
+  assert.equal(gains.at(-1).gain.value, 0.18); assert.equal(timers.size, 1);
   sounds.update('done', prefs); await settle();
   const count = sources.length; sounds.update('done', prefs); await settle();
   assert.equal(sources.length, count); assert.equal(timers.size, 0);
