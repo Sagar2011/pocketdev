@@ -6,6 +6,7 @@ const listen = (channel, callback) => {
 };
 contextBridge.exposeInMainWorld('pocketdev', {
   initial: () => ipcRenderer.invoke('initial'),
+  dismiss: () => ipcRenderer.invoke('dismiss'),
   settings: () => ipcRenderer.invoke('settings'),
   menu: () => ipcRenderer.invoke('menu'),
   preferences: value => ipcRenderer.invoke('preferences', value),

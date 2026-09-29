@@ -3,11 +3,12 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { home, displayState } = require('../plugin/scripts/state.cjs');
+const { home, displayState, readEvents, visibleEvents } = require('../plugin/scripts/state.cjs');
 const { POSES, imageMime, generatePoses, savePose } = require('./generate.cjs');
 
 app.setName('PocketDev');
 let avatar, settings, photo, generation, timer, demo;
+const dismissed = new Map();
 let prefs = { size: 120, motion: true, sound: true, workingSound: true, doneSound: true, avatarDir: null };
 const root = home();
 const prefsFile = path.join(root, 'preferences.json');
@@ -40,21 +41,22 @@ function openSettings() {
   settings.on('closed', () => { generation?.abort(); photo = undefined; settings = null; });
 }
 
+function eventRevision(events) {
+  return events.map(e => `${e.session}:${e.agent}:${e.kind}:${e.request}:${e.state}:${e.at}`).sort().join('|');
+}
 function currentState() {
+  const events = readEvents(root);
+  const live = displayState(visibleEvents(events, dismissed));
+  if (demo && (demo.revision !== eventRevision(events) || live.state === 'permission')) demo = null;
   if (demo && demo.until > Date.now()) return { state: demo.state, message: `Preview · ${demo.state}`, connected: false };
-  const events = [];
-  try {
-    for (const file of fs.readdirSync(path.join(root, 'sessions')).filter(f => /^[a-f0-9]{64}\.json$/.test(f)).slice(0, 200)) {
-      try {
-        const target = path.join(root, 'sessions', file);
-        const stat = fs.lstatSync(target);
-        if (!stat.isFile() || stat.size > 4096) continue;
-        if (Date.now() - stat.mtimeMs > 86400000) { fs.unlinkSync(target); continue; }
-        events.push(JSON.parse(fs.readFileSync(target, 'utf8')));
-      } catch { /* Ignore a malformed or concurrently removed event. */ }
-    }
-  } catch { /* No Claude session yet. */ }
-  return displayState(events);
+  return live;
+}
+function dismissReminder() {
+  demo = null;
+  const now = Date.now();
+  for (const event of readEvents(root)) dismissed.set(`${event.session}:${event.agent}`, now);
+  const status = currentState();
+  for (const win of [avatar, settings]) if (win && !win.isDestroyed()) win.webContents.send('status', status);
 }
 
 async function appearance() {
@@ -89,9 +91,10 @@ ipcMain.handle('initial', async event => {
   return { appearance: await appearance(), status: currentState() };
 });
 ipcMain.handle('settings', event => { guard(event, avatar); openSettings(); });
+ipcMain.handle('dismiss', event => { guard(event, avatar); dismissReminder(); });
 ipcMain.handle('menu', event => {
   guard(event, avatar);
-  Menu.buildFromTemplate([{ label: 'Customize PocketDev…', click: openSettings }, { type: 'separator' }, { label: 'Quit PocketDev', click: () => app.quit() }]).popup({ window: avatar });
+  Menu.buildFromTemplate([{ label: 'Dismiss current reminder (no approval)', click: dismissReminder }, { label: 'Customize PocketDev…', click: openSettings }, { type: 'separator' }, { label: 'Quit PocketDev', click: () => app.quit() }]).popup({ window: avatar });
 });
 ipcMain.handle('preferences', async (event, update) => {
   guard(event, settings);
@@ -103,7 +106,7 @@ ipcMain.handle('preferences', async (event, update) => {
 ipcMain.handle('preview', (event, state) => {
   guard(event, settings);
   if (!['idle', 'waiting', 'working', 'done', 'permission', 'error'].includes(state)) throw new Error('Unknown state.');
-  demo = { state, until: Date.now() + (state === 'permission' ? 30000 : 5000) };
+  demo = { state, until: Date.now() + (state === 'permission' ? 30000 : 5000), revision: eventRevision(readEvents(root)) };
   avatar.webContents.send('status', currentState());
 });
 ipcMain.handle('photo', async event => {

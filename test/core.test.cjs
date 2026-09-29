@@ -127,3 +127,53 @@ test('activity sounds repeat, cap volume, chime once, mute, and cancel pending a
   sounds.update('done', {...prefs, doneSound: false}); await settle();
   assert.equal(sources.length, count + 1);
 });
+
+test('pending permissions survive unrelated tools and agents; matching completion and boundaries clear them', () => {
+  const { writeEvent, readEvents, displayState } = require('../plugin/scripts/state.cjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pocketdev-pending-'));
+  const send = (hook_event_name, extra = {}) => writeEvent(root, { session_id: 'pending-test', hook_event_name, tool_name: 'Bash', tool_input: {command: 'PRIVATE'}, ...extra });
+  const state = () => displayState(readEvents(root)).state;
+  try {
+    send('PreToolUse', {tool_use_id: 'target'});
+    send('PermissionRequest');
+    send('PostToolUse', {tool_name: 'Read', tool_input: {file_path: 'PRIVATE'}, tool_use_id: 'other'});
+    send('PostToolUse', {agent_id: 'subagent', tool_use_id: 'subagent-tool'});
+    assert.equal(state(), 'permission');
+    send('PostToolUse', {tool_use_id: 'target', tool_input: {command: 'edited by user'}});
+    assert.equal(state(), 'working', 'completion uses original request even when input was edited');
+    send('PermissionRequest', {tool_input: {command: 'second'}});
+    assert.equal(state(), 'permission');
+    send('Stop'); assert.equal(state(), 'done');
+    send('SessionEnd'); assert.equal(state(), 'idle');
+    for (const name of fs.readdirSync(path.join(root, 'sessions'))) {
+      const text = fs.readFileSync(path.join(root, 'sessions', name), 'utf8');
+      assert.ok(!text.includes('PRIVATE') && !text.includes('pending-test') && !text.includes('subagent-tool'));
+    }
+  } finally { fs.rmSync(root, {recursive: true, force: true}); }
+});
+
+test('dismissal silences current and delayed reminders, but a new request alerts again', () => {
+  const { visibleEvents, displayState } = require('../plugin/scripts/state.cjs');
+  const at = Date.now();
+  const pending = {session:'s',agent:'a',kind:'permission',request:'r',state:'permission',at:at-10};
+  const dismissed = new Map([['s:a',at]]);
+  const notification = {...pending,kind:'notification',at:at+1};
+  assert.equal(displayState(visibleEvents([pending,notification],dismissed),at+1).state,'idle');
+  assert.equal(displayState(visibleEvents([notification],dismissed),at+1).state,'idle');
+  assert.equal(displayState(visibleEvents([{...pending,at:at+2}],dismissed),at+2).state,'permission');
+});
+
+test('session scanning does not hide a permission behind more than 200 ended files', () => {
+  const { readEvents, displayState } = require('../plugin/scripts/state.cjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pocketdev-many-'));
+  const dir = path.join(root, 'sessions'); fs.mkdirSync(dir);
+  try {
+    for (let i=0;i<205;i++) fs.writeFileSync(path.join(dir, `${i.toString(16).padStart(64,'0')}.json`), JSON.stringify({state:'offline',at:Date.now()}));
+    const pending = path.join(dir, `${'f'.repeat(64)}.json`);
+    fs.writeFileSync(pending, JSON.stringify({state:'permission',at:Date.now()}));
+    assert.equal(displayState(readEvents(root)).state,'permission');
+    const stale = path.join(dir, `${'e'.repeat(64)}.json`);
+    fs.writeFileSync(stale, '{}'); fs.utimesSync(stale, new Date(0), new Date(0));
+    readEvents(root); assert.equal(fs.existsSync(stale),false);
+  } finally { fs.rmSync(root,{recursive:true,force:true}); }
+});
