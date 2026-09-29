@@ -61,6 +61,23 @@ app.whenReady().then(async () => {
         assert.ok(motion.y < -10, 'Done actually jumps above the ground');
         assert.equal(motion.iterations, Infinity, 'Done continues animating');
       }
+      if (state === 'idle') {
+        const motion = await avatar.webContents.executeJavaScript(`(() => {
+          const el = document.querySelector('.character');
+          const animation = el.getAnimations().find(a => a.animationName === 'idle-sway');
+          animation.pause(); animation.currentTime = 2250;
+          const result = {y: new DOMMatrix(getComputedStyle(el).transform).m42, iterations: animation.effect.getTiming().iterations,
+            custom: getComputedStyle(document.querySelector('.custom')).animationName};
+          document.body.classList.add('reduced-motion');
+          result.reduced = getComputedStyle(el).animationName;
+          document.body.classList.remove('reduced-motion');
+          return result;
+        })()`);
+        assert.ok(motion.y <= -3, 'Idle visibly moves at button size');
+        assert.equal(motion.iterations, Infinity);
+        assert.equal(motion.custom, 'idle-sway');
+        assert.equal(motion.reduced, 'none');
+      }
       if (screenshotDir) {
         fs.mkdirSync(screenshotDir, { recursive: true });
         fs.writeFileSync(path.join(screenshotDir, `${state}.png`), (await avatar.webContents.capturePage()).toPNG());

@@ -61,6 +61,36 @@ Once this repository is published to GitHub, users can instead run `/plugin mark
 
 If the terminal works but the desktop Code tab does not, the desktop app may not inherit a Node version manager's PATH. Make `node` available to that app, then fully quit and reopen Claude. Check `/hooks` for `node: command not found`. Do not change permission settings or use bypass mode to fix a PATH issue.
 
+## Mute, disable, or uninstall
+
+- **Mute sounds:** click the avatar’s **···** and turn off **Permission knocks**, **Typing sound**, and/or **Done chime**. The avatar keeps showing activity.
+- **Stop animations:** turn off **Animate** in settings.
+- **Close the companion:** right-click the avatar and choose **Quit PocketDev**. If running through `npm start`, you can also press **Ctrl+C** in that terminal. This immediately stops the avatar and audio; the Claude plugin remains installed.
+
+To disable the installed plugin without removing it, run in a terminal:
+
+```sh
+claude plugin disable pocketdev@pocketdev-local
+```
+
+Start a new Claude Code session afterward. Quit the companion too if you want it off your desktop. To re-enable later:
+
+```sh
+claude plugin enable pocketdev@pocketdev-local
+```
+
+Start the companion and a new Claude Code session. For a temporary `claude --plugin-dir ./plugin` test, exit that session and launch Claude without `--plugin-dir` instead.
+
+To uninstall the marketplace plugin:
+
+```sh
+claude plugin uninstall pocketdev@pocketdev-local
+```
+
+The command above targets a user installation. For project or local installations, run it from that project and add `--scope project` or `--scope local` respectively. Restart Claude afterward.
+
+The plugin and desktop companion are separate: uninstalling the plugin does not remove or quit the app. Remove the desktop app separately if no longer needed. Your custom avatars and preferences remain in `~/.pocketdev` (or your configured `POCKETDEV_HOME`); only delete that folder if you also want to erase them.
+
 ## Make a mini version of yourself
 
 1. Click the avatar's **···**, expand **Make it your mini-self**, then choose **Choose a photo**.
@@ -170,3 +200,5 @@ Code and the original default vector artwork are [MIT licensed](LICENSE). Upload
 See [CONTRIBUTING.md](CONTRIBUTING.md) for small changes and releases. Technical references: [Claude hooks](https://code.claude.com/docs/en/hooks), [Claude plugin reference](https://code.claude.com/docs/en/plugins-reference), [OpenAI image edits](https://developers.openai.com/api/reference/resources/images/methods/edit), and [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
 
 Permission requests repeat double knocks every six seconds until Claude clears the request (or the session ends/expires). Volume increases for the first three rounds, then stays capped. Working plays quiet typing; completion plays one short chime. Settings has independent **Permission knocks**, **Typing sound**, and **Done chime** toggles. Existing muted preferences remain muted. Existing avatar sizes are preserved; use the size slider to choose 120 px.
+
+Idle stays silent: the default buddy sways, moves his head and legs, and eats chips; custom idle images gently sway. Enable **Animate** to see motion (system Reduce Motion is respected). **Preview permission alert** runs for 30 seconds so you can hear repeated knocks; clicking another pose ends the preview early.
