@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>PocketDev · Your little work buddy</title><link rel="stylesheet" href="mascot.css"><link rel="stylesheet" href="settings.css"></head>
+<body><main>
+  <header><span class="wordmark"><span class="mark">p.</span> pocketdev</span><span class="badge">LOCAL FIRST · OPEN SOURCE</span></header>
+  <section class="intro"><p class="eyebrow">A LITTLE COMPANY WHILE YOU CODE</p><h1>Your work. A little more human.</h1><p>A quiet companion for your Claude sessions.<br>Working hard. Waiting politely. Taking snack breaks.</p></section>
+  <section class="poses" aria-label="Animation previews">
+    <button class="pose-card" data-preview="permission"><div class="mascot" data-state="permission"></div><strong>Knock knock.</strong><span>Needs your permission</span></button>
+    <button class="pose-card" data-preview="working"><div class="mascot" data-state="working"></div><strong>Heads down.</strong><span>Type. Think. Repeat.</span></button>
+    <button class="pose-card" data-preview="done"><div class="mascot" data-state="done"></div><strong>There we go.</strong><span>Response finished</span></button>
+    <button class="pose-card" data-preview="idle"><div class="mascot" data-state="idle"></div><strong>Snack break.</strong><span>Idle, eating chips</span></button>
+  </section>
+  <div class="connection"><span id="connection-dot"></span><span id="connection">Waiting for a Claude Code session</span><button id="permission-preview" class="text-button">Preview permission alert</button></div>
+  <details class="card customization"><summary>Make it your mini-self <span class="muted">· optional</span></summary><div class="section-heading"><div><h2>Meet your mini-self</h2><p>One photo. Four poses. Your own little sidekick.</p></div><span class="number">01</span></div>
+    <div class="photo-row"><button id="choose-photo" class="secondary">Choose a photo</button><img id="photo-preview" alt="Your selected reference photo" hidden><span id="photo-hint">PNG, JPEG, or WebP · up to 10 MB</span></div>
+    <label for="api-key">OpenAI API key <span class="muted">· used for this request only</span></label><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your own API key">
+    <p class="fineprint">Generate sends your photo to OpenAI for four paid image edits. API billing is separate from Claude or ChatGPT. Your key and source photo are not saved by PocketDev.</p>
+    <div class="actions"><button id="generate" class="primary" disabled>Create my mini-self</button><button id="cancel" class="secondary" hidden>Stop</button><span id="progress" role="status"></span></div>
+    <p class="fineprint">Personalized poses have gentle movement. The default character also has animated hands and facial expressions.</p>
+    <div class="import-row"><span>Already have your poses?</span><button id="import" class="text-button">Import poses</button><button id="reset" class="text-button">Use default buddy</button></div>
+    <p id="message" role="status"></p>
+  </details>
+  <section class="card compact"><div class="section-heading"><div><h2>Small, just how you like it</h2><p>Drag your desktop buddy to move it. Click its ··· to return here.</p></div><span class="number">02</span></div>
+    <div class="preferences"><label for="size">Avatar size</label><input id="size" type="range" min="48" max="96" step="8" value="64"><output id="size-value" for="size">64 px</output><label class="toggle"><input id="motion" type="checkbox" checked> Animate</label></div>
+  </section>
+  <footer><span>Claude Code terminal + local desktop Code sessions.<br>Regular Chat-tab monitoring is not supported yet.</span><span>v0.1.0</span></footer>
+  <details><summary>Local data &amp; privacy</summary><p>Activity stays on this computer. No telemetry, conversation text, or command contents are collected. Generated and imported poses are saved here:</p><code id="data-path"></code><p>Import waiting.png, working.png, and done.png, plus optional idle.png. Older three-pose packs use their waiting image while idle. Use matching square transparent images. Choosing the default buddy keeps your saved files.</p></details>
+</main><script src="mascot.js"></script><script src="settings.js"></script></body></html>

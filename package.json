@@ -1,0 +1,31 @@
+{
+  "name": "pocketdev",
+  "version": "0.1.0",
+  "description": "A tiny animated desktop companion for Claude Code. Make it your mini-self.",
+  "main": "app/main.cjs",
+  "license": "MIT",
+  "author": "PocketDev contributors",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-concurrency=1 test/core.test.cjs",
+    "test:desktop": "electron test/desktop.cjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "dev.pocketdev.companion",
+    "productName": "PocketDev",
+    "icon": "app/icon.png",
+    "directories": { "output": "dist" },
+    "files": ["app/**/*", "plugin/scripts/state.cjs", "package.json", "LICENSE"],
+    "mac": { "target": ["zip"], "category": "public.app-category.developer-tools" },
+    "win": { "target": ["nsis"] },
+    "linux": { "target": ["AppImage"], "category": "Development" }
+  }
+}
