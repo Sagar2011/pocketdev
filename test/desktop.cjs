@@ -4,10 +4,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'pocketdev-desktop-'));
 process.env.POCKETDEV_HOME = temp;
+process.env.POCKETDEV_AUTOSTART = '0'; // Tests must never download or launch a released app.
 app.setPath('userData', path.join(temp, 'electron'));
+process.argv.push('--pocketdev-managed');
 require('../app/main.cjs');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function expectState(window, expected) {
@@ -35,8 +37,25 @@ app.whenReady().then(async () => {
     for (let i = 0; i < 100; i++) {
       const windows = BrowserWindow.getAllWindows();
       avatar = windows.find(w => w.webContents.getURL().endsWith('/avatar.html'));
-      settings = windows.find(w => w.webContents.getURL().endsWith('/settings.html'));
-      if (avatar && settings && !avatar.webContents.isLoading() && !settings.webContents.isLoading()) break;
+      if (avatar && !avatar.webContents.isLoading()) break;
+      await pause(100);
+    }
+    assert.ok(avatar, 'Managed launch opens the avatar');
+    assert.equal(BrowserWindow.getAllWindows().length, 1, 'Managed first launch does not open settings');
+    const duplicate = spawn(process.execPath, [path.join(__dirname, '../app/main.cjs'), '--pocketdev-managed'], {
+      env: process.env, stdio: 'ignore'
+    });
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { duplicate.kill(); reject(new Error('Duplicate app did not exit')); }, 5000);
+      duplicate.once('error', error => { clearTimeout(timer); reject(error); });
+      duplicate.once('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`Duplicate exited ${code}`)); });
+    });
+    await pause(100);
+    assert.equal(BrowserWindow.getAllWindows().length, 1, 'Another Claude session neither duplicates the avatar nor opens settings');
+    await avatar.webContents.executeJavaScript('window.pocketdev.settings()');
+    for (let i = 0; i < 100; i++) {
+      settings = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().endsWith('/settings.html'));
+      if (settings && !settings.webContents.isLoading()) break;
       await pause(100);
     }
     assert.ok(avatar && settings, 'Both windows load');
@@ -158,7 +177,7 @@ app.whenReady().then(async () => {
     send('SessionEnd'); await expectState(avatar, 'idle');
     assert.equal(await avatar.webContents.executeJavaScript('document.querySelector("#status").textContent'), 'On a little break');
     assert.deepEqual(errors, []);
-    console.log('PASS: real desktop windows, sandbox, all poses, preferences, photo → mocked generation → custom avatar, and hook → UI transitions');
+    console.log('PASS: quiet managed startup, duplicate-instance handling, real desktop windows, sandbox, all poses, preferences, photo → mocked generation → custom avatar, and hook → UI transitions');
     clearTimeout(deadline); app.exit(0);
   } catch (error) { console.error(error); clearTimeout(deadline); app.exit(1); }
 });

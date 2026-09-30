@@ -1,7 +1,7 @@
 {
   "name": "pocketdev",
-  "version": "1.0.1",
-  "description": "Connect Claude Code activity to your PocketDev desktop avatar. Requires the companion app and Node.js 22+.",
+  "version": "1.1.0",
+  "description": "Connect Claude Code activity to your PocketDev desktop avatar. Automatically installs and starts the avatar. Requires Node.js 22+ and a local desktop.",
   "author": {
     "name": "Sagar",
     "url": "https://github.com/Sagar2011"

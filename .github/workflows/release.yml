@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         default: macos-15
-        options: [macos-15, windows-2022, ubuntu-24.04]
+        options: [macos-15, macos-15-intel, windows-2022, ubuntu-24.04]
 
 permissions:
   contents: read
@@ -60,6 +60,19 @@ jobs:
         if: runner.os == 'macOS'
         run: POCKETDEV_TEST_NODE="$(command -v node)" npm run test:desktop
       - run: npm run dist
+      - name: Write release checksums
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { createHash } = require('node:crypto');
+          const files = fs.readdirSync('dist').filter(name => /^PocketDev-.*\.(zip|AppImage)$/.test(name));
+          if (!files.length) throw new Error('No companion archives produced');
+          for (const file of files) {
+            const hash = createHash('sha256').update(fs.readFileSync(`dist/${file}`)).digest('hex');
+            fs.writeFileSync(`dist/${file}.sha256`, `${hash}\n`);
+          }
+          NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-assets
@@ -69,6 +82,7 @@ jobs:
             dist/*.zip
             dist/*.exe
             dist/*.AppImage
+            dist/*.sha256
 
   draft:
     needs: build
@@ -104,20 +118,27 @@ jobs:
           tagged_sha=$(jq -sr --arg tag "$TAG" '[.[] | select(.name == $tag)][0].commit.sha // empty' tags.json)
           [[ -z "$tagged_sha" || "$tagged_sha" == "$SOURCE_SHA" ]] || { echo 'Release tag points to another commit.'; exit 1; }
           shopt -s nullglob
-          files=(assets/*.zip assets/*.exe assets/*.AppImage)
+          files=(assets/*.zip assets/*.AppImage)
           (( ${#files[@]} > 0 )) || { echo 'No release assets found.'; exit 1; }
+          for file in "${files[@]}"; do
+            [[ -f "$file.sha256" ]] || { echo 'Missing release checksum.'; exit 1; }
+            expected=$(cat "$file.sha256")
+            actual=$(sha256sum "$file" | cut -d ' ' -f 1)
+            [[ "$expected" == "$actual" ]] || { echo 'Release checksum mismatch.'; exit 1; }
+          done
+          files+=(assets/*.sha256)
           if [[ -z "$existing" ]]; then
             cat > notes.md <<NOTES
           PocketDev by Sagar — unsigned public beta.
 
-          Download the app for your platform, unzip/install it, and launch PocketDev. Node.js 22+ and local Claude Code are required.
+          Install the plugin below, then start a new local Claude Code session. PocketDev downloads the matching app, verifies its checksum, and launches the avatar automatically. No manual ZIP download or npm command is needed. Node.js 22+ on PATH and a graphical desktop are required.
 
           Inside Claude Code:
           \`\`\`text
           /plugin marketplace add $GH_REPO
           /plugin install pocketdev@pocketdev-local
           \`\`\`
-          Start a new Claude Code session. Regular Claude Chat is not supported.
+          The first download may take a few minutes. Later sessions use the cached app. Only platforms with an attached archive and checksum are available. Regular Claude Chat, SSH, and cloud sessions are not supported. Use /pocketdev:help for startup status and disable/uninstall instructions.
 
           These builds are unsigned and not notarized. Review and manually test each platform before publishing. Photo customization is optional and uses separately billed OpenAI API calls.
 

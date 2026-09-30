@@ -27,13 +27,13 @@
   <details><summary>Help · Mute, disable, or uninstall</summary>
     <p>Click the avatar’s <strong>×</strong> to dismiss current reminders without approving anything in Claude. New requests can alert again. Claude does not report every approval or interruption: use this after approving a long-running command or cancelling in Claude if the reminder continues.</p>
     <p>Turn off the sound toggles above to mute individual sounds, or Animate to stop movement.</p>
-    <p>To stop PocketDev immediately, right-click the avatar and choose <strong>Quit PocketDev</strong>. When running with npm start, Ctrl+C in its terminal also stops it.</p>
+    <p>To stop PocketDev immediately, right-click the avatar and choose <strong>Quit PocketDev</strong>. A new Claude session starts it again. Uncheck <strong>Start automatically with Claude</strong> in the same menu to keep it paused. Use /pocketdev:help in Claude to resume while the avatar is closed.</p>
     <p>Disable the installed Claude plugin from a terminal:</p><code>claude plugin disable pocketdev@pocketdev-local</code>
     <p>Re-enable it later with:</p><code>claude plugin enable pocketdev@pocketdev-local</code>
     <p>Uninstall a user installation with:</p><code>claude plugin uninstall pocketdev@pocketdev-local</code>
     <p>For project or local installations, run uninstall from that project and add --scope project or --scope local. Start a new Claude Code session after changing plugin status. For a temporary --plugin-dir test, start Claude again without that flag.</p>
-    <p>The desktop app is separate: disabling or uninstalling the plugin does not close or remove PocketDev. Quit it separately. Saved avatars and preferences stay in the data folder shown below.</p>
+    <p>Disabling or uninstalling the plugin prevents future automatic starts. Quit the existing avatar too. Downloaded versions are in the runtime subfolder of the data folder below; you may remove that subfolder after quitting. Saved avatars and preferences are kept separately.</p>
   </details>
-  <footer><span>Claude Code terminal + local desktop Code sessions.<br>Regular Chat-tab monitoring is not supported yet.</span><span>v0.1.0</span></footer>
+  <footer><span>Claude Code terminal + local desktop Code sessions.<br>Regular Chat-tab monitoring is not supported yet.</span><span>PocketDev</span></footer>
   <details><summary>Local data &amp; privacy</summary><p>Activity stays on this computer. No telemetry, conversation text, or command contents are collected. Generated and imported poses are saved here:</p><code id="data-path"></code><p>Import waiting.png, working.png, and done.png, plus optional idle.png. Older three-pose packs use their waiting image while idle. Use matching square transparent images. Choosing the default buddy keeps your saved files.</p></details>
 </main><script src="mascot.js"></script><script src="settings.js"></script></body></html>
