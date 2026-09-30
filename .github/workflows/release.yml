@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: Build a platform draft, or publish a tested draft to your marketplace users
+        description: Build and publish in one run, build a draft, or publish an existing draft
         required: true
         type: choice
-        default: build
-        options: [build, publish]
+        default: build-and-publish
+        options: [build-and-publish, build, publish]
       tag:
         description: 'Publish only: existing draft tag, e.g. v1.1.0 (resolve release blockers first)'
         required: false
@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main' && inputs.action == 'build'
+    if: github.ref == 'refs/heads/main' && (inputs.action == 'build' || inputs.action == 'build-and-publish')
     runs-on: ${{ inputs.platform }}
     timeout-minutes: 30
     outputs:
@@ -157,10 +157,16 @@ jobs:
           fi
           gh release upload "$TAG" "${files[@]}" --clobber
           url=$(gh release view "$TAG" --json url --jq .url)
-          printf 'Draft release: %s\n\nReview the downloads, then run this workflow with action=publish and the draft tag.\n' "$url" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Draft release: %s\n\nFor build-and-publish, validation and publication follow automatically. For build-only, test the downloads and run action=publish with the draft tag.\n' "$url" >> "$GITHUB_STEP_SUMMARY"
 
   publish:
-    if: github.ref == 'refs/heads/main' && inputs.action == 'publish'
+    needs: [build, draft]
+    # Explicit status check allows publish-only runs when build/draft are skipped,
+    # but a combined run must finish both jobs successfully before publishing.
+    if: >-
+      ${{ !cancelled() && github.ref == 'refs/heads/main' &&
+          (inputs.action == 'publish' ||
+           (inputs.action == 'build-and-publish' && needs.build.result == 'success' && needs.draft.result == 'success')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -173,7 +179,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE_SHA: ${{ github.sha }}
-          TAG: ${{ inputs.tag }}
+          TAG: ${{ inputs.action == 'build-and-publish' && format('v{0}', needs.build.outputs.version) || inputs.tag }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo 'Enter an existing version tag, e.g. v1.1.0.'; exit 1; }

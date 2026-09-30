@@ -26,12 +26,20 @@ The project currently produces unsigned beta builds. Production distribution req
 
 The bootstrap executes downloads from `Sagar2011/pocketdev`; treat changes to that source, the release workflow, and CODEOWNERS as sensitive. Use branch protection and required `test`/`desktop` checks. GitHub settings are separate from this repository and must be configured by the owner. Enable private vulnerability reporting.
 
-## Publish a beta through GitHub Actions
+## Publish in one workflow run
+
+After updating all versions and merging to `main`, open **Actions → Release PocketDev → Run workflow**. Choose **build-and-publish** (the default), choose your platform, and leave **tag** blank. The workflow derives the tag from the validated package version, runs tests, builds, uploads a draft, verifies its checksums, and publishes the beta in the same run. A failed or cancelled build/upload does not publish.
+
+This publishes the selected platform immediately after automated validation. Complete manual acceptance and licensing checks beforehand. It uses the existing GitHub token; no new secrets or variables are needed.
+
+For multiple platforms in the same version, use **build** for each platform first, then **publish** once. The one-run option does not build other platforms, and published versions cannot accept later uploads through this workflow.
+
+## Optional draft review before publishing
 
 1. Finish review and resolve the applicable release blockers. Increment versions together in `package.json`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`. Run `npm install --package-lock-only` to update both lockfile version fields. Never reuse a published version.
 2. Run the checks above; validate manifests with `claude plugin validate ./plugin` and `claude plugin validate .`. Merge reviewed changes to `main`.
 3. Open **Actions → Release PocketDev → Run workflow**, select **main**, choose action **build**, then a platform: `macos-15` (Apple Silicon), `macos-15-intel` (Intel), `windows-2022` (x64), or `ubuntu-24.04` (x64). Build one platform at a time.
-4. The workflow verifies matching versions, runs unit tests (and desktop tests on macOS), packages the app, and generates SHA-256 sidecars. Only the separate draft job can write releases; it does not execute repository code. All third-party actions are pinned to commits.
+4. The workflow verifies matching versions, runs unit tests (and desktop tests on macOS), packages the app, and generates SHA-256 sidecars. Only the separate draft and publish jobs can write releases; neither executes repository code. All third-party actions are pinned to commits.
 5. Follow the draft link in the workflow summary. Run other platforms against the **same source commit** to add their artifacts to that draft. No public release is made automatically.
 6. Test each downloaded artifact on its native OS. Test startup with empty local data, a real Claude permission prompt, repeated knocks, cancellation/dismissal, completion, mute, idle, custom-avatar import, autostart pause/resume, and an offline restart. Two Claude sessions must still show one avatar. Test plugin-managed installation in a controlled fixture before publication, then verify the actual public download after publication.
 7. Confirm licenses, signatures where applicable, platform coverage, checksums, and release notes. Run **Release PocketDev** again from the same `main` commit with action **publish** and the draft tag (for example `v1.1.0`) only after these checks pass. The platform input is ignored for publish. It verifies the draft, matching source/catalog versions, exact platform asset names, and every checksum before publishing a beta. No rebuild is performed. Advertise only the platforms actually tested.
@@ -52,6 +60,6 @@ The public `.claude-plugin/marketplace.json` in this repository already publishe
 
 **No repository variables, personal access token, Anthropic API key, or OpenAI key are needed.** GitHub supplies the per-run `GITHUB_TOKEN`; build jobs have `contents: read`, and draft/publish jobs request `contents: write`. The workflow exposes it only as the `GH_TOKEN` environment variable for GitHub CLI. Repository/organization policy must allow that permission; a tag ruleset may also restrict tag creation. Resolve policy conflicts explicitly instead of adding a broad personal token. Any future signing credentials belong under **Settings → Secrets and variables → Actions → Secrets**, never plain Variables.
 
-For every release: bump versions, merge reviewed code, build each intended platform from the same commit, test the draft downloads, then dispatch **publish** with the tag. A stale source commit, public release, unknown asset, absent archive/checksum, or mismatched digest fails publication. Resolve the [open release findings](docs/release-review.md), especially audio rights, before selecting publish; checksum validation cannot establish licenses or native acceptance.
+For a single-platform release: bump versions, merge reviewed code, then dispatch **build-and-publish**. If you need multiple platforms or a draft review first, build each intended platform from the same commit, test the downloads, then dispatch **publish** with the tag. A stale source commit, public release, unknown asset, absent archive/checksum, or mismatched digest fails publication. Resolve the [open release findings](docs/release-review.md), especially audio rights, before selecting publish; checksum validation cannot establish licenses or native acceptance.
 
 Listing beyond your own marketplace is separate. According to [Anthropic's publishing documentation](https://code.claude.com/docs/en/plugins/publish), directory submissions go through [the developer portal](https://claude.ai/directory/manage); a paid claude.ai plan is required. The official `claude-plugins-official` marketplace has a separate partner-contact route. This workflow does not automate either listing. PocketDev's hooks require local Claude Code and must not be advertised as general Claude Chat/Cowork support.
