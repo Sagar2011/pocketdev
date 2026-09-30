@@ -3,7 +3,7 @@ const { createHash } = require('node:crypto');
 const path = require('node:path');
 const os = require('node:os');
 
-const home = () => process.env.POCKETDEV_HOME || path.join(os.homedir(), '.pocketdev');
+const home = () => path.resolve(process.env.POCKETDEV_HOME || path.join(os.homedir(), '.pocketdev'));
 const states = new Set(['idle', 'waiting', 'working', 'permission', 'done', 'error', 'offline']);
 
 function fromHook(input, now = Date.now()) {

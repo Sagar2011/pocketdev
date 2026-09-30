@@ -49,7 +49,9 @@ async function generatePoses({ photo, mime, key, save, progress = () => {}, sign
       if (typeof encoded !== 'string' || encoded.length > 14 * 1024 * 1024) throw new Error('The image service returned an invalid image.');
       const bytes = Buffer.from(encoded, 'base64');
       if (imageMime(bytes) !== 'image/png') throw new Error('Expected a PNG from the image service.');
+      signal?.throwIfAborted();
       await save(pose, bytes);
+      signal?.throwIfAborted();
       reference ||= bytes;
     } finally {
       clearTimeout(timer);
