@@ -63,7 +63,7 @@ If the terminal works but the desktop Code tab does not, the desktop app may not
 ## Mute, disable, or uninstall
 
 - **Dismiss a current reminder:** click **×** on the avatar, or right-click → **Dismiss current reminder (no approval)**. This clears the current reminders locally; it never approves or denies anything in Claude. A new request can alert again. Dismissal lasts until the companion exits.
-- **Mute sounds:** click the avatar’s **···** and turn off **Permission knocks**, **Typing sound**, and/or **Done chime**. The avatar keeps showing activity.
+- **Mute sounds:** click the avatar’s **···** and turn off **Permission knocks**, **Typing sound**, and/or **Party popper**. The avatar keeps showing activity.
 - **Stop animations:** turn off **Animate** in settings.
 - **Close the avatar:** right-click it and choose **Quit PocketDev**. A new Claude session starts it again. To keep it off, first uncheck **Start automatically with Claude** in the same menu. If the avatar is closed, `/pocketdev:help` explains how to re-enable startup. Contributor `npm start` sessions can also be stopped with **Ctrl+C**.
 
@@ -200,8 +200,10 @@ Code and bundled default artwork are distributed under the [MIT license](LICENSE
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for small changes and releases. Technical references: [Claude hooks](https://code.claude.com/docs/en/hooks), [Claude plugin reference](https://code.claude.com/docs/en/plugins-reference), [OpenAI image edits](https://developers.openai.com/api/reference/resources/images/methods/edit), and [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
 
-Permission requests repeat double knocks every six seconds until a matching tool completion, turn/session reset, expiry, or local dismissal. Volume increases for the first three rounds, then stays capped. Working plays quiet typing; completion plays one short chime. Settings has independent **Permission knocks**, **Typing sound**, and **Done chime** toggles. Existing muted preferences remain muted. Existing avatar sizes are preserved; use the size slider to choose 120 px.
+Permission requests repeat double knocks every six seconds until a matching tool completion, turn/session reset, expiry, or local dismissal. Volume increases for the first three rounds, then stays capped. Working loops the provided keyboard recording quietly (18% volume); completion plays the provided party-popper recording once (about five seconds, at 45% volume). Settings has independent **Permission knocks**, **Typing sound**, and **Party popper** toggles. Existing muted preferences remain muted. Existing avatar sizes are preserved; use the size slider to choose 120 px.
 
 Idle stays silent: the default buddy gently sways and cycles through eating chips; custom idle images gently sway. Enable **Animate** to see motion (system Reduce Motion is respected). **Preview permission alert** runs for 30 seconds so you can hear repeated knocks; clicking another pose ends the preview early.
 
 Claude does not emit a hook for every approval or interruption. After approving a long-running tool or pressing Escape in Claude, click the avatar’s **×** if the reminder continues; PocketDev cannot promise immediate automatic detection. Pending permissions are tracked separately from unrelated tools. Live permissions take priority over previews, and new live activity ends a preview.
+
+The audio recordings have separate provenance and unverified redistribution terms: see [audio asset notes](app/assets/sounds/README.md).

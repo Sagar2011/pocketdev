@@ -83,7 +83,7 @@ test('question prompts wait for input, irrelevant notifications do not overwrite
   assert.equal(fromHook({ hook_event_name: 'Stop' }), null);
 });
 
-test('activity sounds repeat, cap volume, chime once, mute, and cancel pending audio', async () => {
+test('activity sounds repeat, cap volume, pop once, mute, and cancel pending audio', async () => {
   const vm = require('node:vm');
   const timers = new Map(), gains = [], sources = [];
   let next = 0;
@@ -95,7 +95,14 @@ test('activity sounds repeat, cap volume, chime once, mute, and cancel pending a
     createBiquadFilter() { return { frequency: {}, connect() {}, disconnect() {} }; }
     createGain() { const gain = { gain: {}, connect() {}, disconnect() {} }; gains.push(gain); return gain; }
   }
-  const sandbox = { window: {}, AudioContext, setTimeout(fn, delay) { timers.set(++next, {fn, delay}); return next; }, clearTimeout(id) { timers.delete(id); } };
+  const clips = [];
+  class Audio {
+    plays = 0; currentTime = 0;
+    constructor(src) { this.src = src; clips.push(this); }
+    async play() { this.plays++; this.paused = false; }
+    pause() { this.paused = true; }
+  }
+  const sandbox = { window: {}, Audio, AudioContext, setTimeout(fn, delay) { timers.set(++next, {fn, delay}); return next; }, clearTimeout(id) { timers.delete(id); } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/knock.js'), 'utf8'), sandbox);
   const sounds = sandbox.window.createActivitySounds();
   const prefs = {sound: true, workingSound: true, doneSound: true};
@@ -116,16 +123,41 @@ test('activity sounds repeat, cap volume, chime once, mute, and cancel pending a
   assert.ok(knockSamples.every(value => Number.isFinite(value) && Math.abs(value) <= 1), 'Knock samples remain bounded');
   sounds.update('idle', prefs); assert.equal(timers.size, 0); assert.ok(sources.every(s => s.stopped));
   sounds.update('working', prefs); await settle();
-  assert.equal(gains.at(-1).gain.value, 0.18); assert.equal(timers.size, 1);
+  const keyboard = clips[0];
+  assert.equal(keyboard.src, 'assets/sounds/keyboard.mp3');
+  assert.equal(keyboard.loop, true);
+  assert.equal(keyboard.volume, 0.18);
+  assert.equal(timers.size, 0, 'Native audio loops without repeat timers');
+  sounds.update('working', prefs);
+  assert.equal(keyboard.plays, 1, 'Repeated working updates do not restart typing');
+  const count = sources.length;
   sounds.update('done', prefs); await settle();
-  const count = sources.length; sounds.update('done', prefs); await settle();
-  assert.equal(sources.length, count); assert.equal(timers.size, 0);
-  sounds.update('working', prefs); sounds.update('idle', prefs); await settle();
-  assert.equal(sources.length, count, 'state clearing during resume prevents playback');
+  assert.ok(keyboard.paused, 'Completion stops typing');
+  assert.equal(keyboard.currentTime, 0);
+  const pop = clips[1];
+  assert.equal(pop.src, 'assets/sounds/party-popper.mp3');
+  assert.equal(pop.volume, 0.45);
+  assert.equal(pop.plays, 1);
+  sounds.update('done', prefs); await settle();
+  assert.equal(pop.plays, 1, 'Repeated done updates do not replay');
+  assert.equal(sources.length, count, 'Recorded states do not synthesize sounds');
+  sounds.update('permission', prefs); sounds.update('idle', prefs); await settle();
+  assert.equal(sources.length, count, 'State clearing during resume prevents knocks');
+  assert.ok(pop.paused);
   sounds.update('working', prefs); await settle();
-  sounds.update('working', {...prefs, workingSound: false}); assert.equal(timers.size, 0);
+  sounds.update('working', {...prefs, workingSound: false});
+  assert.ok(keyboard.paused, 'Muting stops the keyboard loop');
+  assert.equal(keyboard.currentTime, 0);
   sounds.update('done', {...prefs, doneSound: false}); await settle();
-  assert.equal(sources.length, count + 1);
+  assert.equal(pop.plays, 1, 'Muted completion never plays');
+  sounds.update('done', prefs); await settle();
+  assert.equal(pop.plays, 2, 'A new completion replays the clip');
+  sounds.update('done', {...prefs, doneSound: false});
+  assert.ok(pop.paused, 'Muting interrupts the recording');
+  sounds.update('working', prefs); sounds.stop(); await settle();
+  assert.ok(keyboard.paused, 'Stopping while playback starts cancels the keyboard');
+  assert.equal(timers.size, 0);
+
 });
 
 test('pending permissions survive unrelated tools and agents; matching completion and boundaries clear them', () => {

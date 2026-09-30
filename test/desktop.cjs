@@ -82,6 +82,22 @@ app.whenReady().then(async () => {
     await motionPreference('no-preference');
     const sizes = await avatar.webContents.executeJavaScript(`Promise.all([...new Set([...document.querySelectorAll('.sprite-frame image')].map(el => el.getAttribute('href')))].map(async src => { const img = new Image(); img.src = src; await img.decode(); return [img.naturalWidth, img.naturalHeight]; }))`);
     assert.equal(sizes.length, 4, 'All four bundled sprite sheets load');
+    const audioDuration = await avatar.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+      const clip = new Audio('assets/sounds/party-popper.mp3');
+      const timeout = setTimeout(() => reject(new Error('Completion audio timed out')), 5000);
+      clip.onloadedmetadata = () => { clearTimeout(timeout); resolve(clip.duration); };
+      clip.onerror = () => { clearTimeout(timeout); reject(new Error('Completion audio failed to load')); };
+      clip.load();
+    })`);
+    assert.ok(audioDuration > 5 && audioDuration < 5.3, 'Bundled completion recording loads under the renderer CSP');
+    const keyboardDuration = await avatar.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+      const clip = new Audio('assets/sounds/keyboard.mp3');
+      const timeout = setTimeout(() => reject(new Error('Keyboard audio timed out')), 5000);
+      clip.onloadedmetadata = () => { clearTimeout(timeout); resolve(clip.duration); };
+      clip.onerror = () => { clearTimeout(timeout); reject(new Error('Keyboard audio failed to load')); };
+      clip.load();
+    })`);
+    assert.ok(keyboardDuration > 53 && keyboardDuration < 54, 'Bundled keyboard recording loads under the renderer CSP');
     assert.ok(sizes.every(([w, h]) => w === h && w >= 1000), 'Sprite sheets are complete square assets');
     for (const state of ['waiting', 'working', 'done', 'permission', 'idle']) {
       await settings.webContents.executeJavaScript(`window.pocketdev.preview(${JSON.stringify(state)})`);
