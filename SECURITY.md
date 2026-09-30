@@ -1,6 +1,6 @@
 # Security
 
-Do not post API keys, personal photos, transcripts, or generated private images in public issues. Once this project is hosted on GitHub with private vulnerability reporting enabled, use **Security → Report a vulnerability** for security reports. Until then, arrange a private channel with the maintainer before sharing sensitive details.
+Do not post API keys, personal photos, transcripts, or generated private images in public issues. Use [GitHub private vulnerability reporting](https://github.com/Sagar2011/pocketdev/security/advisories/new) if enabled. If unavailable, contact the maintainer to arrange a private channel before sharing sensitive details.
 
 Reports should include the version, platform, reproduction steps with synthetic data, and impact. This is an early OSS project, with no guaranteed response SLA.
 

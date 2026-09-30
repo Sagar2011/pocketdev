@@ -14,6 +14,10 @@ process.stdin.on('end', () => {
   clearTimeout(timeout);
   try {
     if (oversized) return;
-    writeEvent(home(), JSON.parse(input));
+    const event = JSON.parse(input);
+    writeEvent(home(), event);
+    if (event.hook_event_name === 'SessionStart' && typeof event.session_id === 'string' && event.session_id.length > 0 && event.session_id.length <= 512) {
+      require('./runtime.cjs').kickoff();
+    }
   } catch { /* Invalid input, permissions, or absent companion must not block Claude. */ }
 });

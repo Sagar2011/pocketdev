@@ -11,6 +11,8 @@ let avatar, settings, photo, generation, timer, demo;
 const dismissed = new Map();
 let prefs = { size: 120, motion: true, sound: true, workingSound: true, doneSound: true, avatarDir: null };
 const root = home();
+// All launch paths and app versions share one instance lock for this data folder.
+app.setPath('userData', path.join(root, 'electron'));
 const prefsFile = path.join(root, 'preferences.json');
 const page = name => pathToFileURL(path.join(__dirname, `${name}.html`)).href;
 
@@ -94,7 +96,12 @@ ipcMain.handle('settings', event => { guard(event, avatar); openSettings(); });
 ipcMain.handle('dismiss', event => { guard(event, avatar); dismissReminder(); });
 ipcMain.handle('menu', event => {
   guard(event, avatar);
-  Menu.buildFromTemplate([{ label: 'Dismiss current reminder (no approval)', click: dismissReminder }, { label: 'Customize PocketDev…', click: openSettings }, { type: 'separator' }, { label: 'Quit PocketDev', click: () => app.quit() }]).popup({ window: avatar });
+  Menu.buildFromTemplate([{ label: 'Dismiss current reminder (no approval)', click: dismissReminder }, { label: 'Customize PocketDev…', click: openSettings },
+    { label: 'Start automatically with Claude', type: 'checkbox', checked: !fs.existsSync(path.join(root, 'autostart-disabled')), click: item => {
+      const flag = path.join(root, 'autostart-disabled');
+      if (item.checked) fs.rmSync(flag, { force: true });
+      else fs.writeFileSync(flag, '', { mode: 0o600 });
+    } }, { type: 'separator' }, { label: 'Quit PocketDev', click: () => app.quit() }]).popup({ window: avatar });
 });
 ipcMain.handle('preferences', async (event, update) => {
   guard(event, settings);
@@ -139,6 +146,7 @@ ipcMain.handle('generate', async (event, key) => {
       save: (pose, bytes) => savePose(dir, pose, bytes),
       progress: pose => { if (!sender.isDestroyed()) sender.send('progress', pose); }
     });
+    controller.signal.throwIfAborted();
     prefs.avatarDir = path.basename(dir); savePrefs(); await broadcastAppearance();
     return true;
   } catch (error) {
@@ -170,13 +178,18 @@ ipcMain.handle('import', async event => {
 });
 ipcMain.handle('reset', async event => {
   guard(event, settings);
+  if (generation) throw new Error('Wait for generation to finish.');
   prefs.avatarDir = null; savePrefs(); await broadcastAppearance();
 });
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', () => openSettings());
+  app.on('second-instance', (_event, argv) => {
+    if (!argv.includes('--pocketdev-managed')) openSettings();
+  });
   app.whenReady().then(() => {
+    const managed = process.argv.includes('--pocketdev-managed');
+    if (managed) app.dock?.hide();
     fs.mkdirSync(path.join(root, 'sessions'), { recursive: true, mode: 0o700 });
     try {
       const saved = JSON.parse(fs.readFileSync(prefsFile, 'utf8'));
@@ -203,7 +216,7 @@ else {
       { label: 'PocketDev', submenu: [{ label: 'Customize…', click: openSettings }, { role: 'quit' }] },
       { role: 'editMenu' }
     ]));
-    if (!fs.existsSync(prefsFile)) { savePrefs(); openSettings(); }
+    if (!fs.existsSync(prefsFile)) { savePrefs(); if (!managed) openSettings(); }
     app.on('activate', openSettings);
   });
   app.on('before-quit', () => { clearInterval(timer); generation?.abort(); });

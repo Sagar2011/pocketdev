@@ -4,10 +4,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'pocketdev-desktop-'));
 process.env.POCKETDEV_HOME = temp;
+process.env.POCKETDEV_AUTOSTART = '0'; // Tests must never download or launch a released app.
 app.setPath('userData', path.join(temp, 'electron'));
+process.argv.push('--pocketdev-managed');
 require('../app/main.cjs');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function expectState(window, expected) {
@@ -35,13 +37,31 @@ app.whenReady().then(async () => {
     for (let i = 0; i < 100; i++) {
       const windows = BrowserWindow.getAllWindows();
       avatar = windows.find(w => w.webContents.getURL().endsWith('/avatar.html'));
-      settings = windows.find(w => w.webContents.getURL().endsWith('/settings.html'));
-      if (avatar && settings && !avatar.webContents.isLoading() && !settings.webContents.isLoading()) break;
+      if (avatar && !avatar.webContents.isLoading()) break;
+      await pause(100);
+    }
+    assert.ok(avatar, 'Managed launch opens the avatar');
+    assert.equal(BrowserWindow.getAllWindows().length, 1, 'Managed first launch does not open settings');
+    const duplicate = spawn(process.execPath, [path.join(__dirname, '../app/main.cjs'), '--pocketdev-managed'], {
+      env: process.env, stdio: 'ignore'
+    });
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { duplicate.kill(); reject(new Error('Duplicate app did not exit')); }, 5000);
+      duplicate.once('error', error => { clearTimeout(timer); reject(error); });
+      duplicate.once('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`Duplicate exited ${code}`)); });
+    });
+    await pause(100);
+    assert.equal(BrowserWindow.getAllWindows().length, 1, 'Another Claude session neither duplicates the avatar nor opens settings');
+    await avatar.webContents.executeJavaScript('window.pocketdev.settings()');
+    for (let i = 0; i < 100; i++) {
+      settings = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().endsWith('/settings.html'));
+      if (settings && !settings.webContents.isLoading()) break;
       await pause(100);
     }
     assert.ok(avatar && settings, 'Both windows load');
     assert.equal(avatar.getBounds().width, 120);
     assert.equal(avatar.getBounds().height, 120);
+    assert.ok(await avatar.webContents.executeJavaScript('document.querySelector("#mascot").getBoundingClientRect().width <= 120'), 'Sprite strip cannot expand the desktop avatar beyond its window');
     await pause(300);
     assert.equal(await avatar.webContents.executeJavaScript('typeof require'), 'undefined', 'Node is unavailable to renderer');
     assert.equal(await settings.webContents.executeJavaScript('document.querySelectorAll(".pose-card").length'), 4);
@@ -58,12 +78,31 @@ app.whenReady().then(async () => {
     await motionPreference('reduce');
     await settings.webContents.executeJavaScript('window.pocketdev.preview("working")');
     await expectState(avatar, 'working');
-    assert.equal(await avatar.webContents.executeJavaScript('getComputedStyle(document.querySelector(".typing-left")).animationName'), 'none', 'OS reduced motion disables typing');
+    assert.equal(await avatar.webContents.executeJavaScript('getComputedStyle(document.querySelector(".pose-working .film")).animationName'), 'none', 'OS reduced motion disables typing');
     await motionPreference('no-preference');
+    const sizes = await avatar.webContents.executeJavaScript(`Promise.all([...new Set([...document.querySelectorAll('.sprite-frame image')].map(el => el.getAttribute('href')))].map(async src => { const img = new Image(); img.src = src; await img.decode(); return [img.naturalWidth, img.naturalHeight]; }))`);
+    assert.equal(sizes.length, 4, 'All four bundled sprite sheets load');
+    const audioDuration = await avatar.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+      const clip = new Audio('assets/sounds/party-popper.mp3');
+      const timeout = setTimeout(() => reject(new Error('Completion audio timed out')), 5000);
+      clip.onloadedmetadata = () => { clearTimeout(timeout); resolve(clip.duration); };
+      clip.onerror = () => { clearTimeout(timeout); reject(new Error('Completion audio failed to load')); };
+      clip.load();
+    })`);
+    assert.ok(audioDuration > 5 && audioDuration < 5.3, 'Bundled completion recording loads under the renderer CSP');
+    const keyboardDuration = await avatar.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+      const clip = new Audio('assets/sounds/keyboard.mp3');
+      const timeout = setTimeout(() => reject(new Error('Keyboard audio timed out')), 5000);
+      clip.onloadedmetadata = () => { clearTimeout(timeout); resolve(clip.duration); };
+      clip.onerror = () => { clearTimeout(timeout); reject(new Error('Keyboard audio failed to load')); };
+      clip.load();
+    })`);
+    assert.ok(keyboardDuration > 53 && keyboardDuration < 54, 'Bundled keyboard recording loads under the renderer CSP');
+    assert.ok(sizes.every(([w, h]) => w === h && w >= 1000), 'Sprite sheets are complete square assets');
     for (const state of ['waiting', 'working', 'done', 'permission', 'idle']) {
       await settings.webContents.executeJavaScript(`window.pocketdev.preview(${JSON.stringify(state)})`);
       await pause(250);
-      const animation = { permission: ['.knocking-arm', 'knock'], working: ['.typing-left', 'typing'], done: ['.thumb-arm', 'thumbs'], idle: ['.snacking-arm', 'snack'] }[state];
+      const animation = { permission: ['.pose-waiting .film', 'knock-frames'], working: ['.pose-working .film', 'work-frames'], done: ['.pose-done .film', 'done-frames'], idle: ['.pose-idle .film', 'snack-frames'] }[state];
       if (animation) assert.equal(await avatar.webContents.executeJavaScript(`getComputedStyle(document.querySelector(${JSON.stringify(animation[0])})).animationName`), animation[1]);
       assert.equal(await avatar.webContents.executeJavaScript('document.body.dataset.state'), state);
       if (state === 'done') {
@@ -88,23 +127,35 @@ app.whenReady().then(async () => {
         assert.equal(motion.custom, 'idle-sway');
         assert.equal(motion.reduced, 'none');
       }
+      const capture = await avatar.webContents.capturePage();
+      const bitmap = capture.toBitmap(), dimensions = capture.getSize();
+      let painted = 0;
+      for (let y = Math.floor(dimensions.height * .2); y < dimensions.height * .9; y++) {
+        for (let x = Math.floor(dimensions.width * .2); x < dimensions.width * .8; x++) {
+          if (bitmap[(y * dimensions.width + x) * 4 + 3] > 32) painted++;
+        }
+      }
+      assert.ok(painted > dimensions.width * dimensions.height * .02, `${state} paints visible artwork in the floating window`);
       if (screenshotDir) {
         fs.mkdirSync(screenshotDir, { recursive: true });
-        fs.writeFileSync(path.join(screenshotDir, `${state}.png`), (await avatar.webContents.capturePage()).toPNG());
+        fs.writeFileSync(path.join(screenshotDir, `${state}.png`), capture.toPNG());
       }
     }
     if (screenshotDir) fs.writeFileSync(path.join(screenshotDir, 'settings.png'), (await settings.webContents.capturePage()).toPNG());
     // Inspect the occasional head scratch, not just the fast typing phase.
     await settings.webContents.executeJavaScript('window.pocketdev.preview("working")');
     await expectState(avatar, 'working');
-    const scratch = await avatar.webContents.executeJavaScript(`(() => {
-      const arm = document.querySelector('.scratch-arm');
-      for (const animation of document.querySelector('.pose-working').getAnimations({subtree: true})) {
-        if (animation.effect.getTiming().duration === 7000) { animation.pause(); animation.currentTime = 5200; }
-      }
-      return Number(getComputedStyle(arm).opacity);
+    const frames = await avatar.webContents.executeJavaScript(`(() => {
+      const film = document.querySelector('.pose-working .film');
+      const animation = film.getAnimations()[0];
+      animation.pause();
+      const frameAt = time => {
+        animation.currentTime = time;
+        return Math.round(-new DOMMatrix(getComputedStyle(film).transform).m41 / film.parentElement.clientWidth) + 0;
+      };
+      return [frameAt(0), frameAt(150), frameAt(5200)];
     })()`);
-    assert.ok(scratch > .9, 'Working animation raises the hand to scratch its head');
+    assert.deepEqual(frames, [0, 1, 3], 'Typing alternates frames and switches to a real head-scratch pose');
     await pause(150);
     if (screenshotDir) fs.writeFileSync(path.join(screenshotDir, 'head-scratch.png'), (await avatar.webContents.capturePage()).toPNG());
 
@@ -129,10 +180,26 @@ app.whenReady().then(async () => {
     assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#api-key").value'), '');
     await settings.webContents.executeJavaScript('window.pocketdev.reset()');
     assert.equal(await avatar.webContents.executeJavaScript('document.querySelector(".custom").hidden'), true);
+    // Cancel after the last PNG reaches disk: it must not activate the new pack.
+    const fsp = require('node:fs/promises');
+    const originalRename = fsp.rename;
+    fsp.rename = async (...args) => {
+      await originalRename(...args);
+      if (String(args[1]).endsWith(`${path.sep}idle.png`))
+        await settings.webContents.executeJavaScript('window.pocketdev.cancel()');
+    };
+    try {
+      const cancelled = await settings.webContents.executeJavaScript(`window.pocketdev.generate('synthetic-test-key').then(() => false, error => /Generation stopped/.test(error.message))`);
+      assert.equal(cancelled, true, 'Cancellation during final save is reported to the user');
+      assert.equal(await avatar.webContents.executeJavaScript('document.querySelector(".custom").hidden'), true, 'Cancelled pack never replaces the active default');
+    } finally { fsp.rename = originalRename; }
+    const forbidden = await avatar.webContents.executeJavaScript(`window.pocketdev.preferences({size: 48}).then(() => false, error => /Untrusted request/.test(error.message))`);
+    assert.equal(forbidden, true, 'Avatar renderer cannot invoke settings-only mutations');
+    assert.equal(avatar.getBounds().width, 120);
     dialog.showOpenDialog = originalDialog; global.fetch = originalFetch;
     // Let the preview expire, then send the real CLI hook into the live companion.
     await pause(5100);
-    const node = process.env.POCKETDEV_TEST_NODE;
+    const node = process.env.POCKETDEV_TEST_NODE || process.env.npm_node_execpath;
     assert.ok(node, 'Set POCKETDEV_TEST_NODE to your Node executable');
     const send = (event, extra = {}) => {
       const result = spawnSync(node, [path.join(__dirname, '../plugin/scripts/hook.cjs')], {
@@ -158,7 +225,7 @@ app.whenReady().then(async () => {
     send('SessionEnd'); await expectState(avatar, 'idle');
     assert.equal(await avatar.webContents.executeJavaScript('document.querySelector("#status").textContent'), 'On a little break');
     assert.deepEqual(errors, []);
-    console.log('PASS: real desktop windows, sandbox, all poses, preferences, photo → mocked generation → custom avatar, and hook → UI transitions');
+    console.log('PASS: quiet managed startup, duplicate-instance handling, real desktop windows, sandbox, all poses, preferences, photo → mocked generation → custom avatar, and hook → UI transitions');
     clearTimeout(deadline); app.exit(0);
   } catch (error) { console.error(error); clearTimeout(deadline); app.exit(1); }
 });
