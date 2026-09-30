@@ -7,7 +7,7 @@ Keep PocketDev small. A focused fix or character improvement is more useful than
 3. Run `npm test`. For UI or bridge changes, also run the desktop smoke test documented in README.md and inspect the actual app.
 4. Explain the behavior change and what you tested in your pull request.
 
-The original mascot is in `app/mascot.js`; motion is in `app/mascot.css`. Both use standard SVG/CSS. Preserve reduced-motion support and make poses readable at the smallest size.
+The default sprite sheets are in `app/assets/buddy/`. `app/mascot.js` clips and aligns their frames using SVG view boxes; `app/mascot.css` controls frame timing and movement. No animation library is needed. Preserve reduced-motion support and make poses readable at the smallest size.
 
 The bridge must remain silent, fail-open, and independent of Claude's permission decisions. Never add prompt/command/transcript collection. Do not hardcode local usernames, credentials, or personal images.
 

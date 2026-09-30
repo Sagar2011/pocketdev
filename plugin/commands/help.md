@@ -18,6 +18,7 @@ remove quarantine, or disable Electron's sandbox. Retry by starting a new Claude
 session. A timed-out installer lock expires after ten minutes.
 
 Controls:
+
 - Right-click the avatar, uncheck **Start automatically with Claude**, then choose
   **Quit PocketDev** to pause it. To resume while it is closed, run
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime.cjs" enable` only if the user asks.

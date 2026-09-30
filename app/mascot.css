@@ -1,57 +1,51 @@
-.mascot { position: relative; aspect-ratio: 1; }
-.mascot svg, .mascot .custom { width: 100%; height: 100%; object-fit: contain; display: block; }
+.mascot { position: relative; aspect-ratio: 1; min-width: 0; min-height: 0; }
+.mascot .original, .mascot .custom { width: 100%; height: 100%; display: block; }
+.mascot .custom { object-fit: contain; }
 .mascot .custom[hidden], .mascot .hidden { display: none; }
-.pose, .seated-legs { display: none; }
+.pose { display: none; width: 100%; height: 100%; overflow: hidden; }
 [data-state="waiting"] .pose-waiting, [data-state="permission"] .pose-waiting, [data-state="error"] .pose-waiting,
-[data-state="working"] .pose-working, [data-state="done"] .pose-done, [data-state="idle"] .pose-idle,
-[data-state="working"] .seated-legs, [data-state="idle"] .seated-legs { display: block; }
-[data-state="working"] .standing-legs, [data-state="idle"] .standing-legs { display: none; }
-.character { transform-origin: 120px 215px; animation: breathe 4s ease-in-out infinite; }
-.eyes { transform-origin: 122px 60px; animation: blink 5s infinite; }
-.knocking-arm { transform-origin: 142px 92px; animation: knock 6s ease-in-out infinite; }
-.knock-marks { animation: knock-marks 6s ease-in-out infinite; }
-[data-state="working"] .head { transform-origin: 122px 78px; animation: think 7s ease-in-out infinite; }
-[data-state="working"] .eyes { translate: 1px 2px; }
-.typing-left { animation: typing .12s ease-in-out infinite alternate; }
-.typing-fingers { animation: typing .13s .06s ease-in-out infinite alternate, typing-break 7s linear infinite; }
-.typing-right { animation: typing-break 7s linear infinite; }
-.scratch-arm { animation: scratch 7s ease-in-out infinite; transform-origin: 142px 92px; }
-.scratch-hand { animation: scratch-fingers .2s ease-in-out infinite alternate; }
-.thumb-arm { transform-origin: 142px 92px; animation: thumbs 1.6s ease-in-out infinite; }
-.snacking-arm { transform-origin: 142px 92px; animation: snack 4.5s ease-in-out infinite; }
-[data-state="idle"] .mouth { transform-origin: 122px 71px; animation: chew 4.5s ease-in-out infinite; }
-.chipbag { transform-origin: 120px 168px; animation: crinkle 4.5s ease-in-out infinite; }
-.custom { transform-origin: 50% 90%; animation: breathe 4s ease-in-out infinite; }
-[data-state="working"] .custom { animation: busy .15s ease-in-out infinite alternate; }
-[data-state="done"] .custom { animation: celebrate 1.6s ease-in-out infinite; }
-[data-state="permission"] .custom, [data-state="waiting"] .custom { animation: knock 6s ease-in-out infinite; }
-@keyframes breathe { 50% { transform: translateY(-1px); } }
-@keyframes blink { 0%, 42%, 46%, 100% { transform: scaleY(1); } 44% { transform: scaleY(.08); } }
-@keyframes knock { 0%, 10%, 23%, 39%, 54%, 68%, 83%, 100% { transform: rotate(0); } 15%, 20% { transform: rotate(8deg); } 44%, 50% { transform: rotate(16deg); } 72%, 78% { transform: rotate(25deg); } }
-@keyframes knock-marks { 0%, 10%, 23%, 39%, 54%, 68%, 83%, 100% { opacity: 0; } 15%, 20% { opacity: .35; } 44%, 50% { opacity: .65; } 72%, 78% { opacity: 1; } }
-@keyframes typing { to { transform: translateY(-3px); } }
-@keyframes typing-break { 0%, 61%, 90%, 100% { opacity: 1; } 63%, 88% { opacity: 0; } }
-@keyframes scratch { 0%, 61%, 90%, 100% { opacity: 0; transform: rotate(12deg); } 64%, 69%, 77%, 85% { opacity: 1; transform: rotate(0); } 73%, 81% { opacity: 1; transform: rotate(-5deg); } 88% { opacity: 1; transform: rotate(0); } }
-@keyframes scratch-fingers { to { transform: translateY(-2px); } }
-@keyframes think { 0%, 60%, 92%, 100% { transform: rotate(3deg); } 68%, 84% { transform: rotate(-6deg); } }
-@keyframes thumbs { 0%, 100% { transform: rotate(12deg); } 35%, 55% { transform: rotate(-10deg); } 75% { transform: rotate(0); } }
-@keyframes snack { 0%, 8%, 75%, 100% { transform: rotate(0); } 30%, 43% { transform: rotate(125deg) scale(.65); } }
-@keyframes chew { 0%, 35%, 70%, 100% { transform: scaleY(1); } 42%, 54%, 66% { transform: scaleY(1.25); } 48%, 60% { transform: scaleY(.9); } }
-@keyframes crinkle { 0%, 10%, 35%, 100% { transform: scaleX(1); } 18%, 26% { transform: scaleX(.96); } }
-@keyframes busy { to { transform: translateY(-1px) rotate(.5deg); } }
-@keyframes celebrate { 0%, 85%, 100% { transform: translateY(0); } 16% { transform: translateY(2px) scaleY(.97); } 38%, 48% { transform: translateY(-14px) rotate(-2deg); } 66% { transform: translateY(0) scaleY(.97); } }
-.reduced-motion *, .reduced-motion *::before { animation: none !important; transition: none !important; }
-.reduced-motion .scratch-arm, .reduced-motion .knock-marks { opacity: 0; }
-@media (prefers-reduced-motion: reduce) { .mascot * { animation: none !important; } .scratch-arm, .knock-marks { opacity: 0; } }
-
-[data-state="done"] .character { animation: celebrate 1.6s ease-in-out infinite; }
-[data-state="permission"] .character, [data-state="waiting"] .character { animation: excuse-me 6s ease-in-out infinite; }
-@keyframes excuse-me { 0%, 25%, 55%, 85%, 100% { transform: translateX(0) rotate(0); } 15% { transform: translateX(1px) rotate(1deg); } 45% { transform: translateX(3px) rotate(2deg); } 75% { transform: translateX(5px) rotate(3deg); } }
-
-/* Readable even at button size; idle stays relaxed and silent. */
+[data-state="working"] .pose-working, [data-state="done"] .pose-done, [data-state="idle"] .pose-idle { display: block; }
+.film { display: flex; width: 400%; height: 100%; }
+.sprite-frame { display: block; flex: 0 0 25%; min-width: 0; height: 100%; overflow: hidden; }
+.character, .custom { transform-origin: 50% 94%; animation: breathe 4s ease-in-out infinite; }
+.pose-waiting .film { animation: knock-frames 6s steps(1, end) infinite; }
+.pose-working .film { animation: work-frames 7s steps(1, end) infinite; }
+.pose-done .film { animation: done-frames 1.6s steps(1, end) infinite; }
+.pose-idle .film { animation: snack-frames 4.5s steps(1, end) infinite; }
+[data-state="done"] .character, [data-state="done"] .custom { animation: celebrate 1.6s ease-in-out infinite; }
 [data-state="idle"] .character, [data-state="idle"] .custom { animation: idle-sway 4.5s ease-in-out infinite; }
-[data-state="idle"] .head { transform-origin: 122px 78px; animation: idle-look 4.5s ease-in-out infinite; }
-[data-state="idle"] .seated-legs { transform-origin: 120px 158px; animation: idle-legs 2.25s ease-in-out infinite; }
-@keyframes idle-sway { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
-@keyframes idle-look { 0%, 100% { transform: rotate(-2deg); } 35%, 55% { transform: rotate(3deg); } }
-@keyframes idle-legs { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+[data-state="permission"] .character, [data-state="waiting"] .character { animation: excuse-me 6s ease-in-out infinite; }
+[data-state="working"] .custom { animation: busy .15s ease-in-out infinite alternate; }
+[data-state="permission"] .custom, [data-state="waiting"] .custom { animation: excuse-me 6s ease-in-out infinite; }
+/* Hide the other cells instantly; interpolating between cells would slide the sheet. */
+@keyframes knock-frames {
+  0%, 8%, 20%, 100% { transform: translateX(0); }
+  3%, 13% { transform: translateX(-25%); }
+  10% { transform: translateX(-50%); }
+  16% { transform: translateX(-75%); }
+}
+@keyframes work-frames {
+  0%, 4%, 8%, 12%, 16%, 20%, 24%, 28%, 32%, 36%, 40%, 44%, 48%, 52%, 56%, 60%, 92%, 96%, 100% { transform: translateX(0); }
+  2%, 6%, 10%, 14%, 18%, 22%, 26%, 30%, 34%, 38%, 42%, 46%, 50%, 54%, 58%, 94%, 98% { transform: translateX(-25%); }
+  64%, 76%, 88% { transform: translateX(-50%); }
+  70%, 82% { transform: translateX(-75%); }
+}
+@keyframes done-frames {
+  0%, 100% { transform: translateX(0); }
+  16% { transform: translateX(-25%); }
+  38% { transform: translateX(-50%); }
+  70% { transform: translateX(-75%); }
+}
+@keyframes snack-frames {
+  0%, 85%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-25%); }
+  35% { transform: translateX(-50%); }
+  60% { transform: translateX(-75%); }
+}
+@keyframes breathe { 50% { transform: translateY(-1px); } }
+@keyframes busy { to { transform: translateY(-1px) rotate(.5deg); } }
+@keyframes celebrate { 0%, 85%, 100% { transform: translateY(0); } 16% { transform: translateY(2px) scaleY(.97); } 38%, 48% { transform: translateY(-12px) rotate(-2deg); } 66% { transform: translateY(0) scaleY(.97); } }
+@keyframes excuse-me { 0%, 25%, 100% { transform: translateX(0) rotate(0); } 4% { transform: translateX(1px) rotate(1deg); } 14% { transform: translateX(2px) rotate(2deg); } 18% { transform: translateX(3px) rotate(3deg); } }
+@keyframes idle-sway { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-4px) rotate(1deg); } }
+.reduced-motion *, .reduced-motion *::before { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .mascot * { animation: none !important; } }

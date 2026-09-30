@@ -61,6 +61,7 @@ app.whenReady().then(async () => {
     assert.ok(avatar && settings, 'Both windows load');
     assert.equal(avatar.getBounds().width, 120);
     assert.equal(avatar.getBounds().height, 120);
+    assert.ok(await avatar.webContents.executeJavaScript('document.querySelector("#mascot").getBoundingClientRect().width <= 120'), 'Sprite strip cannot expand the desktop avatar beyond its window');
     await pause(300);
     assert.equal(await avatar.webContents.executeJavaScript('typeof require'), 'undefined', 'Node is unavailable to renderer');
     assert.equal(await settings.webContents.executeJavaScript('document.querySelectorAll(".pose-card").length'), 4);
@@ -77,12 +78,15 @@ app.whenReady().then(async () => {
     await motionPreference('reduce');
     await settings.webContents.executeJavaScript('window.pocketdev.preview("working")');
     await expectState(avatar, 'working');
-    assert.equal(await avatar.webContents.executeJavaScript('getComputedStyle(document.querySelector(".typing-left")).animationName'), 'none', 'OS reduced motion disables typing');
+    assert.equal(await avatar.webContents.executeJavaScript('getComputedStyle(document.querySelector(".pose-working .film")).animationName'), 'none', 'OS reduced motion disables typing');
     await motionPreference('no-preference');
+    const sizes = await avatar.webContents.executeJavaScript(`Promise.all([...new Set([...document.querySelectorAll('.sprite-frame image')].map(el => el.getAttribute('href')))].map(async src => { const img = new Image(); img.src = src; await img.decode(); return [img.naturalWidth, img.naturalHeight]; }))`);
+    assert.equal(sizes.length, 4, 'All four bundled sprite sheets load');
+    assert.ok(sizes.every(([w, h]) => w === h && w >= 1000), 'Sprite sheets are complete square assets');
     for (const state of ['waiting', 'working', 'done', 'permission', 'idle']) {
       await settings.webContents.executeJavaScript(`window.pocketdev.preview(${JSON.stringify(state)})`);
       await pause(250);
-      const animation = { permission: ['.knocking-arm', 'knock'], working: ['.typing-left', 'typing'], done: ['.thumb-arm', 'thumbs'], idle: ['.snacking-arm', 'snack'] }[state];
+      const animation = { permission: ['.pose-waiting .film', 'knock-frames'], working: ['.pose-working .film', 'work-frames'], done: ['.pose-done .film', 'done-frames'], idle: ['.pose-idle .film', 'snack-frames'] }[state];
       if (animation) assert.equal(await avatar.webContents.executeJavaScript(`getComputedStyle(document.querySelector(${JSON.stringify(animation[0])})).animationName`), animation[1]);
       assert.equal(await avatar.webContents.executeJavaScript('document.body.dataset.state'), state);
       if (state === 'done') {
@@ -107,23 +111,35 @@ app.whenReady().then(async () => {
         assert.equal(motion.custom, 'idle-sway');
         assert.equal(motion.reduced, 'none');
       }
+      const capture = await avatar.webContents.capturePage();
+      const bitmap = capture.toBitmap(), dimensions = capture.getSize();
+      let painted = 0;
+      for (let y = Math.floor(dimensions.height * .2); y < dimensions.height * .9; y++) {
+        for (let x = Math.floor(dimensions.width * .2); x < dimensions.width * .8; x++) {
+          if (bitmap[(y * dimensions.width + x) * 4 + 3] > 32) painted++;
+        }
+      }
+      assert.ok(painted > dimensions.width * dimensions.height * .02, `${state} paints visible artwork in the floating window`);
       if (screenshotDir) {
         fs.mkdirSync(screenshotDir, { recursive: true });
-        fs.writeFileSync(path.join(screenshotDir, `${state}.png`), (await avatar.webContents.capturePage()).toPNG());
+        fs.writeFileSync(path.join(screenshotDir, `${state}.png`), capture.toPNG());
       }
     }
     if (screenshotDir) fs.writeFileSync(path.join(screenshotDir, 'settings.png'), (await settings.webContents.capturePage()).toPNG());
     // Inspect the occasional head scratch, not just the fast typing phase.
     await settings.webContents.executeJavaScript('window.pocketdev.preview("working")');
     await expectState(avatar, 'working');
-    const scratch = await avatar.webContents.executeJavaScript(`(() => {
-      const arm = document.querySelector('.scratch-arm');
-      for (const animation of document.querySelector('.pose-working').getAnimations({subtree: true})) {
-        if (animation.effect.getTiming().duration === 7000) { animation.pause(); animation.currentTime = 5200; }
-      }
-      return Number(getComputedStyle(arm).opacity);
+    const frames = await avatar.webContents.executeJavaScript(`(() => {
+      const film = document.querySelector('.pose-working .film');
+      const animation = film.getAnimations()[0];
+      animation.pause();
+      const frameAt = time => {
+        animation.currentTime = time;
+        return Math.round(-new DOMMatrix(getComputedStyle(film).transform).m41 / film.parentElement.clientWidth) + 0;
+      };
+      return [frameAt(0), frameAt(150), frameAt(5200)];
     })()`);
-    assert.ok(scratch > .9, 'Working animation raises the hand to scratch its head');
+    assert.deepEqual(frames, [0, 1, 3], 'Typing alternates frames and switches to a real head-scratch pose');
     await pause(150);
     if (screenshotDir) fs.writeFileSync(path.join(screenshotDir, 'head-scratch.png'), (await avatar.webContents.capturePage()).toPNG());
 

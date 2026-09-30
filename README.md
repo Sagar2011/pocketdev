@@ -101,7 +101,7 @@ Disabling or uninstalling the plugin prevents startup in new sessions but does n
 
 The current integration uses `gpt-image-1.5`, medium quality, 1024×1024 transparent PNGs, through the official Images edits API. It makes **four paid API requests**. A Claude or ChatGPT subscription does not cover that API usage; access and billing depend on your OpenAI account. Check [current pricing](https://developers.openai.com/api/docs/pricing) before generating.
 
-**Animation detail:** custom images are four illustrations with gentle motion and pose transitions, not a generated skeletal rig or frame-by-frame video. The default vector character has individually animated parts. Generated pose consistency and likeness can vary. No paid image-generation request is needed to run the default character.
+**Animation detail:** custom images are four illustrations with gentle motion and pose transitions, not a generated skeletal rig or frame-by-frame video. The bundled default character uses four textured 3D-style sprite sheets with four poses each, animated with CSS. Typing alternates hand positions, working includes a head scratch, permission shows knocking, and idle brings chips to the mouth. These are stylized frame sequences, not a live 3D rig. Generated pose consistency and likeness can vary. No paid image-generation request is needed to run the default character.
 
 There are no automatic retries. On an error, later requests stop and your current avatar remains active. Completed images are kept in a new local `avatars/custom-*` folder. You can recover them there. Retrying starts all four requests again. Stopping or closing the window cancels the client request, but an already-started provider request may still be billed.
 
@@ -186,7 +186,7 @@ Unsigned development builds can trigger operating-system warnings. Public macOS 
 ## Small by design
 
 ```text
-app/             Electron app, vanilla UI, original SVG mascot, image API integration
+app/             Electron app, vanilla UI, bundled textured sprite mascot, image API integration
 plugin/          Claude hooks, release bootstrap, local status writer, and help command
 .claude-plugin/  Installable marketplace manifest
 test/            Node checks and a real desktop smoke test
@@ -196,12 +196,12 @@ There is no frontend framework, database, web server, MCP server, or provider ab
 
 ## License
 
-Code and the original default vector artwork are [MIT licensed](LICENSE). Uploaded photos and user-generated avatar packs are not part of this repository's license; use images you have permission to use and follow your generation provider's terms.
+Code and bundled default artwork are distributed under the [MIT license](LICENSE). See [artwork notes](app/assets/buddy/README.md) for generation provenance. Uploaded photos and user-generated avatar packs are not part of this repository's license; use images you have permission to use and follow your generation provider's terms.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for small changes and releases. Technical references: [Claude hooks](https://code.claude.com/docs/en/hooks), [Claude plugin reference](https://code.claude.com/docs/en/plugins-reference), [OpenAI image edits](https://developers.openai.com/api/reference/resources/images/methods/edit), and [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
 
 Permission requests repeat double knocks every six seconds until a matching tool completion, turn/session reset, expiry, or local dismissal. Volume increases for the first three rounds, then stays capped. Working plays quiet typing; completion plays one short chime. Settings has independent **Permission knocks**, **Typing sound**, and **Done chime** toggles. Existing muted preferences remain muted. Existing avatar sizes are preserved; use the size slider to choose 120 px.
 
-Idle stays silent: the default buddy sways, moves his head and legs, and eats chips; custom idle images gently sway. Enable **Animate** to see motion (system Reduce Motion is respected). **Preview permission alert** runs for 30 seconds so you can hear repeated knocks; clicking another pose ends the preview early.
+Idle stays silent: the default buddy gently sways and cycles through eating chips; custom idle images gently sway. Enable **Animate** to see motion (system Reduce Motion is respected). **Preview permission alert** runs for 30 seconds so you can hear repeated knocks; clicking another pose ends the preview early.
 
 Claude does not emit a hook for every approval or interruption. After approving a long-running tool or pressing Escape in Claude, click the avatar’s **×** if the reminder continues; PocketDev cannot promise immediate automatic detection. Pending permissions are tracked separately from unrelated tools. Live permissions take priority over previews, and new live activity ends a preview.
