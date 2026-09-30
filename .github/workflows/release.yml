@@ -58,7 +58,7 @@ jobs:
       - run: npm test
       - name: Desktop smoke test (macOS)
         if: runner.os == 'macOS'
-        run: POCKETDEV_TEST_NODE="$(command -v node)" npm run test:desktop
+        run: npm run test:desktop
       - run: npm run dist
       - name: Write release checksums
         shell: bash
@@ -80,7 +80,6 @@ jobs:
           if-no-files-found: error
           path: |
             dist/*.zip
-            dist/*.exe
             dist/*.AppImage
             dist/*.sha256
 

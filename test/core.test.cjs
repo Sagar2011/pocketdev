@@ -73,6 +73,18 @@ test('cancelled generation and invalid photo input never contact the image provi
   await assert.rejects(generatePoses({ ...options, key: 'key\nInjected: header' }), /valid OpenAI API key/);
 });
 
+test('cancellation during the final save never reports generation success', async () => {
+  const { generatePoses } = require('../app/generate.cjs');
+  const photo = Buffer.from('89504e470d0a1a0a', 'hex');
+  const controller = new AbortController();
+  const saved = [];
+  await assert.rejects(generatePoses({ photo, mime: 'image/png', key: 'test-key', signal: controller.signal,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ data: [{ b64_json: photo.toString('base64') }] }) }),
+    save: async pose => { saved.push(pose); if (pose === 'idle') controller.abort(); }
+  }), { name: 'AbortError' });
+  assert.equal(saved.length, 4, 'Completed files are kept even when activation is cancelled');
+});
+
 test('question prompts wait for input, irrelevant notifications do not overwrite activity', () => {
   const { fromHook, displayState } = require('../plugin/scripts/state.cjs');
   assert.equal(fromHook({session_id: 'a', hook_event_name: 'SessionStart'}).state, 'idle');

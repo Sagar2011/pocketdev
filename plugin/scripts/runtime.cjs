@@ -134,7 +134,7 @@ async function start() {
     report('starting');
     const executable = await install();
     if (!executable || !enabled(root)) return;
-    const env = { ...process.env };
+    const env = { ...process.env, POCKETDEV_HOME: root };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.NODE_OPTIONS;
     if (process.platform === 'linux') env.APPIMAGE_EXTRACT_AND_RUN = '1';

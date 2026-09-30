@@ -146,6 +146,7 @@ ipcMain.handle('generate', async (event, key) => {
       save: (pose, bytes) => savePose(dir, pose, bytes),
       progress: pose => { if (!sender.isDestroyed()) sender.send('progress', pose); }
     });
+    controller.signal.throwIfAborted();
     prefs.avatarDir = path.basename(dir); savePrefs(); await broadcastAppearance();
     return true;
   } catch (error) {
@@ -177,6 +178,7 @@ ipcMain.handle('import', async event => {
 });
 ipcMain.handle('reset', async event => {
   guard(event, settings);
+  if (generation) throw new Error('Wait for generation to finish.');
   prefs.avatarDir = null; savePrefs(); await broadcastAppearance();
 });
 

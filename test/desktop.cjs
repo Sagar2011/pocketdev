@@ -180,10 +180,26 @@ app.whenReady().then(async () => {
     assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#api-key").value'), '');
     await settings.webContents.executeJavaScript('window.pocketdev.reset()');
     assert.equal(await avatar.webContents.executeJavaScript('document.querySelector(".custom").hidden'), true);
+    // Cancel after the last PNG reaches disk: it must not activate the new pack.
+    const fsp = require('node:fs/promises');
+    const originalRename = fsp.rename;
+    fsp.rename = async (...args) => {
+      await originalRename(...args);
+      if (String(args[1]).endsWith(`${path.sep}idle.png`))
+        await settings.webContents.executeJavaScript('window.pocketdev.cancel()');
+    };
+    try {
+      const cancelled = await settings.webContents.executeJavaScript(`window.pocketdev.generate('synthetic-test-key').then(() => false, error => /Generation stopped/.test(error.message))`);
+      assert.equal(cancelled, true, 'Cancellation during final save is reported to the user');
+      assert.equal(await avatar.webContents.executeJavaScript('document.querySelector(".custom").hidden'), true, 'Cancelled pack never replaces the active default');
+    } finally { fsp.rename = originalRename; }
+    const forbidden = await avatar.webContents.executeJavaScript(`window.pocketdev.preferences({size: 48}).then(() => false, error => /Untrusted request/.test(error.message))`);
+    assert.equal(forbidden, true, 'Avatar renderer cannot invoke settings-only mutations');
+    assert.equal(avatar.getBounds().width, 120);
     dialog.showOpenDialog = originalDialog; global.fetch = originalFetch;
     // Let the preview expire, then send the real CLI hook into the live companion.
     await pause(5100);
-    const node = process.env.POCKETDEV_TEST_NODE;
+    const node = process.env.POCKETDEV_TEST_NODE || process.env.npm_node_execpath;
     assert.ok(node, 'Set POCKETDEV_TEST_NODE to your Node executable');
     const send = (event, extra = {}) => {
       const result = spawnSync(node, [path.join(__dirname, '../plugin/scripts/hook.cjs')], {

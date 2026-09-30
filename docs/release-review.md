@@ -1,0 +1,50 @@
+# Release review — 2026-09-30
+
+## Decision
+
+**Do not label or publish this working tree as production-ready yet.** The code fixes and local checks below are complete, but audio redistribution rights, signing, and native platform acceptance remain open. Nothing was published during this review.
+
+This review covered the Electron main process/preload/renderers, image generation, local hook/event bridge, automatic companion installation, release workflows, package configuration, artwork/audio delivery, tests, and user documentation. It is a code review and local verification, not a penetration test or certification.
+
+## Open release findings
+
+| Priority                                        | Finding                                                                                                                                                                                                                        | Required action                                                                                                                                                                                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 — blocks public distribution of these assets | `app/assets/sounds/keyboard.mp3` and `party-popper.mp3` were supplied without verified redistribution terms. The package includes them, and the repository MIT license cannot establish permission for third-party recordings. | Obtain and record permission/attribution, or replace the recordings with redistributable alternatives. Kept the requested local sounds intact; did not assume a license or publish them.             |
+| P1 — production distribution                    | Release builds are unsigned and macOS is not notarized. A passing local build does not prove first-install behavior on another user's machine.                                                                                 | Configure platform signing/notarization and test first launch on clean machines. If deliberately shipping an unsigned beta, label it accurately and document OS approval without bypassing security. |
+| P2 — advertised platform scope                  | macOS Apple Silicon was checked locally. Intel Mac, Windows, and Linux packaging configuration is not native acceptance evidence.                                                                                              | Run each intended build on its target OS and test plugin-managed install, sounds, permissions, pause/resume, and updates before claiming support.                                                    |
+| P2 — release sequencing                         | A marketplace update on `main` can become visible before its exact-version companion release is published. First-time installs during that window fail with 404 and retry on a later session.                                  | Complete same-commit draft builds and publish the matching archives/checksums before announcing an update. Keep the window short; document the limitation.                                           |
+
+## Fixed findings
+
+| Finding                                                                                                                                                                       | Change and regression evidence                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cancellation while the final generated image was saving could still report success and activate a cancelled pack.                                                             | Added cancellation checks around image saves and immediately before activation. A unit test failed before the fix. The desktop test now cancels after the final PNG rename and proves the default avatar remains active.              |
+| A relative `POCKETDEV_HOME` changed meaning when the bootstrap launched the binary from its installation directory. Hooks and the companion could use different data folders. | Resolve the home path before launch and pass the absolute path to the child. Unit regression failed before the fix; the real SessionStart fixture now launches with a relative override and verifies the child's absolute path.       |
+| Reset depended on a disabled frontend button to exclude generation races.                                                                                                     | Main-process reset now rejects while generation is active, matching import/photo behavior.                                                                                                                                            |
+| Regular CI omitted the desktop suite, allowing renderer/asset regressions to reach release time.                                                                              | Added a bounded macOS desktop job on push/PR. Desktop tests also verify that the avatar renderer cannot invoke settings-only mutations. Require this check in repository branch protection.                                           |
+| Test/build workflows used mutable action tags and duplicated packaging paths.                                                                                                 | Pinned test actions, disabled persisted checkout credentials, removed the redundant Build desktop workflow, and kept the existing draft-release workflow as the single CI packaging path. Local `npm run pack/dist` remain available. |
+| Volta requested different Node/npm versions from CI and required extra desktop-test setup.                                                                                    | Aligned the Node pin with the supported Node 22 toolchain, removed the separate npm pin, and let desktop tests use npm's Node executable unless explicitly overridden.                                                                |
+| User instructions mixed installation, developer commands, release details, and appended sound notes.                                                                          | Rewrote README around installation, controls, previews/real Claude tests, one-photo customization/import, updates, pause/uninstall, troubleshooting, and privacy. Consolidated maintainer release steps in CONTRIBUTING.              |
+
+## Security boundaries retained
+
+- Sandboxed renderers, context isolation, Node integration disabled, restrictive CSP, blocked navigation/window creation, and sender/main-frame checks on privileged IPC.
+- Claude hooks remain silent and fail-open; permissions are never approved or denied by PocketDev. Inputs are size-bounded; event filenames and correlation identifiers are hashed. Prompts, commands, and transcripts are not persisted.
+- Runtime installation uses fixed, exact-version GitHub assets, bounded downloads, checksum verification, exclusive installation locking, staged extraction, and atomic installation. Checksums are not independent signatures. Cached local executables are trusted as same-user data.
+- The release-write job does not check out or execute repository/dependency code. It refuses to replace published versions or mix commits in a draft.
+- Photo generation stays opt-in, sequential, cancellable, and without automatic paid retries. Its provider calls were mocked in tests; no paid request was made.
+
+## Verification
+
+- `npm test`: **16 passed**, including both reproduced regressions, hook metadata handling, pending permission isolation, sound lifecycle/muting, checksum failures, installation cleanup/concurrency, and actual detached startup with a harmless fixture.
+- `npm run test:desktop`: **passed on macOS Apple Silicon**, including sprite visibility/motion, audio asset loading under CSP, single-instance startup, IPC restrictions, final-save cancellation, preferences, and real hook-to-window transitions. Expected rejected IPC calls print errors during their negative tests.
+- `claude plugin validate ./plugin` and `claude plugin validate .`: **passed**.
+- `actionlint`: **passed** for remaining workflows. The new CI job has been validated locally but has not been run on GitHub in this review.
+- `npm audit`: **0 known vulnerabilities** reported for the locked dependency tree at review time. This is not a guarantee against unknown vulnerabilities.
+- `git diff --check`: **passed**.
+- `npm run dist`: **passed for unsigned macOS arm64**. Packaged runtime files and all six image/audio assets match source byte-for-byte; tests, workflow files, and `.env` files are excluded. App/plugin/marketplace/lockfile versions match. No other native platform is certified by this review.
+
+## Deliberate limits
+
+No new service, framework, provider abstraction, updater daemon, or agent orchestration was added. Local event polling remains synchronous and scans retained files; this is a small personal desktop companion, not a high-volume event collector. The permission reminder can outlast approval until a matching tool completes; local dismissal is provided and documented. Audio fidelity is subjective; automated checks prove lifecycle/loading, not that a recording sounds good. Signing configuration, repository settings, and public release publication were not modified remotely.

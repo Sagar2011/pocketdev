@@ -1,44 +1,47 @@
 # Contributing
 
-Keep PocketDev small. A focused fix or character improvement is more useful than a framework rewrite. Discuss new services or dependencies in an issue first.
+Keep PocketDev small. Prefer a focused fix over a framework, service, or new dependency. Preserve reduced motion, mute controls, metadata-only hooks, and fail-open behavior. Never add automatic permission approval, conversation collection, or secrets to the repository.
 
-1. Install Node 22+ and run `npm ci`.
-2. Make one focused change.
-3. Run `npm test`. For UI or bridge changes, also run the desktop smoke test documented in README.md and inspect the actual app.
-4. Explain the behavior change and what you tested in your pull request.
+## Local checks
 
-The default sprite sheets are in `app/assets/buddy/`. `app/mascot.js` clips and aligns their frames using SVG view boxes; `app/mascot.css` controls frame timing and movement. No animation library is needed. Preserve reduced-motion support and make poses readable at the smallest size.
+Use Node 22+ and run:
 
-The bridge must remain silent, fail-open, and independent of Claude's permission decisions. Never add prompt/command/transcript collection. Do not hardcode local usernames, credentials, or personal images.
+```sh
+npm ci
+npm test
+npm run test:desktop
+```
 
-## Publishing the repository
+The desktop check requires a graphical desktop and uses temporary data. It mocks photo generation and never makes paid requests. `POCKETDEV_TEST_NODE` can override the Node executable; npm normally supplies it. Set `POCKETDEV_SCREENSHOTS` to collect captures.
 
-The public repository is `Sagar2011/pocketdev`. Enable private vulnerability reporting in GitHub settings. Changes to the bootstrap download source must be reviewed as executable-code distribution changes.
+Run `npm run pack` or `npm run dist` on the platform you are changing. Inspect the actual app; passing DOM assertions is not enough for artwork or audio quality. Describe the trigger, resulting behavior, and verification in a pull request. Do not include private photos, API keys, or transcripts.
 
-## Releases
+Default sprite sheets live in `app/assets/buddy/`. `app/mascot.js` aligns the frames; `app/mascot.css` controls animation. Preserve readability at 48 px. Imported/generated packs remain simple still images with CSS movement.
 
-1. Update versions in `package.json`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`; refresh `package-lock.json` with `npm install --package-lock-only`.
-2. Run tests and smoke-test the app and a real Claude permission prompt on each platform you claim to support.
-3. Build with `npm run dist` on that platform. The manual **Build desktop** GitHub Action can build one selected platform per run; it uploads build artifacts and does not publish a release.
-4. Configure signing/notarization using [electron-builder signing documentation](https://www.electron.build/code-signing). Signing credentials belong in secrets, never the repository. The included manual CI build disables certificate discovery and creates unsigned test artifacts.
-5. Create a GitHub release, upload verified platform artifacts, and describe limitations. Include each platform archive and its `.sha256` sidecar. Users install through the Claude marketplace; the plugin downloads and starts the companion automatically.
+## Before a public release
 
-### Draft release from GitHub Actions
+Read [the release review](docs/release-review.md). Resolve recording redistribution rights before publishing any archive containing the supplied MP3s. Do not relabel third-party recordings as MIT. Document permission or replace them with appropriately licensed assets, including attribution.
 
-Push reviewed code and matching app/plugin/marketplace versions to `main`. Open **Actions → Release PocketDev → Run workflow**, select **main**, and choose one platform. macos-15 builds an Apple Silicon ZIP, macos-15-intel builds an Intel Mac ZIP, windows-2022 builds an x64 Windows portable ZIP, and ubuntu-24.04 builds an x64 Linux AppImage. Keep the configured artifact names: the bootstrap selects them exactly. Builds run one at a time and remain unsigned.
+The project currently produces unsigned beta builds. Production distribution requires the relevant signing/notarization setup and native tests on every advertised platform. Store signing credentials in GitHub secrets; never commit them or disable platform security protections. See [electron-builder signing](https://www.electron.build/code-signing).
 
-The workflow runs unit tests (plus desktop smoke tests on macOS), builds the app, and attaches it to a **draft pre-release** using the built-in GitHub token. No personal token or Apple credentials are needed. Only the draft job has release-write permission; it does not execute repository code. Actions are pinned to commit hashes.
+The bootstrap executes downloads from `Sagar2011/pocketdev`; treat changes to that source, the release workflow, and CODEOWNERS as sensitive. Use branch protection and required `test`/`desktop` checks. GitHub settings are separate from this repository and must be configured by the owner. Enable private vulnerability reporting.
 
-Run another platform against the same commit to add its download to the same draft. Reruns may replace assets only on a draft from that exact commit. A published release or a tag/draft pointing to different code is never overwritten. For changes after a published release, increase versions first.
+## Publish a beta through GitHub Actions
 
-Open the draft link in the workflow summary, manually test the downloads, review the notes, then click **Publish release**. Windows/Linux builds require their own manual smoke tests before advertising support. The workflow never publishes the draft automatically. The plugin downloads its exact matching version on a new session; a running older app must be quit before the new one starts. There is no independent polling updater. Publish the matching assets before announcing the plugin update. While a new version is on main but its release is still a draft, first-time installation of that version reports a missing-release error and retries on a later session.
+1. Finish review and resolve the applicable release blockers. Increment versions together in `package.json`, `plugin/.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json`. Run `npm install --package-lock-only` to update both lockfile version fields. Never reuse a published version.
+2. Run the checks above; validate manifests with `claude plugin validate ./plugin` and `claude plugin validate .`. Merge reviewed changes to `main`.
+3. Open **Actions → Release PocketDev → Run workflow**, select **main**, then a platform: `macos-15` (Apple Silicon), `macos-15-intel` (Intel), `windows-2022` (x64), or `ubuntu-24.04` (x64). Build one platform at a time.
+4. The workflow verifies matching versions, runs unit tests (and desktop tests on macOS), packages the app, and generates SHA-256 sidecars. Only the separate draft job can write releases; it does not execute repository code. All third-party actions are pinned to commits.
+5. Follow the draft link in the workflow summary. Run other platforms against the **same source commit** to add their artifacts to that draft. No public release is made automatically.
+6. Test each downloaded artifact on its native OS. Test startup with empty local data, a real Claude permission prompt, repeated knocks, cancellation/dismissal, completion, mute, idle, custom-avatar import, autostart pause/resume, and an offline restart. Two Claude sessions must still show one avatar. Test plugin-managed installation in a controlled fixture before publication, then verify the actual public download after publication.
+7. Confirm licenses, signatures where applicable, platform coverage, checksums, and release notes. Publish the draft only after these checks pass. Advertise only the platforms actually tested.
 
-## Current validation boundary
+The bootstrap selects exact names: `PocketDev-VERSION-mac-arm64.zip`, `PocketDev-VERSION-mac-x64.zip`, `PocketDev-VERSION-win-x64.zip`, or `PocketDev-VERSION-linux-x64.AppImage`, each with a `.sha256` containing its lowercase digest. Do not rename assets.
 
-Node tests and the desktop smoke test can run without a provider account. Live photo generation requires a photo and a billable OpenAI API key; mocked API tests do not prove model access or output quality. Cross-platform configuration is not evidence that Windows/Linux installers have been tested. Do not claim unsupported coverage in release notes.
+A draft or tag pointing at another commit fails deliberately. If code changed during testing, bump the version and create a fresh draft; do not force-move a public tag. Reruns may replace assets only in a draft for the same source commit. Published releases are never overwritten by the workflow.
 
-## Plugin bootstrap checks
+**Publication timing:** users installing a new plugin version from `main` cannot download its app while the matching release is still a draft. Keep that interval short and announce the plugin update only after all intended artifacts are public. A running older companion must be quit before the new version starts. Cached versions remain for rollback/offline use; there is no polling updater.
 
-`npm test` covers release selection, checksum rejection, partial-install cleanup, offline cache reuse, concurrent setup, crash-lock recovery, and the real SessionStart hook with a harmless cached executable. It never downloads a release or makes paid API calls. `npm run test:desktop` disables release bootstrap and exercises the actual UI.
+## Validation limits
 
-Before publishing, test from an empty `POCKETDEV_HOME` on a desktop: install the plugin, start a new Claude session, wait for the first download, and confirm the avatar appears without a setup window. Start a second Claude session and confirm there is only one avatar and settings do not open. Test a real permission prompt, response completion, startup pause, Quit, re-enable, and restart offline. Do not count mocked downloads or another OS's tests as native platform validation.
+Mocks cannot verify provider access, billing, likeness, or image quality. A macOS test cannot certify Windows/Linux startup, permissions, audio, or OS security handling. `npm audit` covers known advisories, not every vulnerability. SHA-256 sidecars detect corruption but do not replace publisher signatures. State polling scans retained local event files; it is intended for personal desktop use, not fleet-scale monitoring.

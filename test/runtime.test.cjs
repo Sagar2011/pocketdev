@@ -102,7 +102,7 @@ test('real SessionStart hook launches the cached app detached; pause and disable
   const executable = path.join(root, 'runtime', `${version}-${process.platform}-${process.arch}`, asset.executable);
   const signal = path.join(root, 'launched.json');
   const hook = path.join(__dirname, '../plugin/scripts/hook.cjs');
-  const env = { ...process.env, POCKETDEV_HOME: root, POCKETDEV_AUTOSTART: '1', DISPLAY: ':test',
+  const env = { ...process.env, POCKETDEV_HOME: path.relative(process.cwd(), root), POCKETDEV_AUTOSTART: '1', DISPLAY: ':test',
     SSH_CONNECTION: '', SSH_TTY: '', CLAUDE_CODE_REMOTE: '', ELECTRON_RUN_AS_NODE: '1' };
   const send = (event = 'SessionStart', extraEnv = {}) => spawnSync(process.execPath, [hook], {
     input: JSON.stringify({ session_id: 'autostart-test', hook_event_name: event }),
@@ -110,7 +110,7 @@ test('real SessionStart hook launches the cached app detached; pause and disable
   });
   try {
     fs.mkdirSync(path.dirname(executable), { recursive: true });
-    fs.writeFileSync(executable, `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(signal)}, JSON.stringify({args: process.argv, electronAsNode: process.env.ELECTRON_RUN_AS_NODE}));\n`, { mode: 0o755 });
+    fs.writeFileSync(executable, `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(signal)}, JSON.stringify({args: process.argv, electronAsNode: process.env.ELECTRON_RUN_AS_NODE, home: process.env.POCKETDEV_HOME}));\n`, { mode: 0o755 });
     const result = send();
     assert.equal(result.status, 0);
     assert.equal(result.stdout, '');
@@ -119,6 +119,7 @@ test('real SessionStart hook launches the cached app detached; pause and disable
     const launched = JSON.parse(fs.readFileSync(signal, 'utf8'));
     assert.ok(launched.args.includes('--pocketdev-managed'));
     assert.equal(launched.electronAsNode, undefined);
+    assert.equal(launched.home, root);
     // Let the short-lived worker finish writing its status before the next checks.
     await new Promise(resolve => setTimeout(resolve, 150));
     fs.rmSync(signal);
@@ -131,4 +132,16 @@ test('real SessionStart hook launches the cached app detached; pause and disable
     await new Promise(resolve => setTimeout(resolve, 300));
     assert.equal(fs.existsSync(signal), false);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('relative data directory resolves before the companion changes working directory', () => {
+  const { home } = require('../plugin/scripts/state.cjs');
+  const previous = process.env.POCKETDEV_HOME;
+  try {
+    process.env.POCKETDEV_HOME = './relative-pocketdev';
+    assert.equal(home(), path.resolve('relative-pocketdev'));
+  } finally {
+    if (previous === undefined) delete process.env.POCKETDEV_HOME;
+    else process.env.POCKETDEV_HOME = previous;
+  }
 });
