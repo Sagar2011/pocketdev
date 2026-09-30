@@ -173,7 +173,7 @@ npm run dist          # Archive for the current platform in dist/
 
 Tests use a mocked image provider and never make paid API requests. Set `POCKETDEV_SCREENSHOTS` to save desktop-test captures. `POCKETDEV_TEST_NODE` optionally overrides the Node executable used by the desktop test; otherwise it uses npm's Node executable.
 
-The project uses Electron, vanilla HTML/CSS/JavaScript, and Node's standard library. No frontend framework, database, server, or agent coordinator. See [contribution and release instructions](CONTRIBUTING.md) and the [release review](docs/release-review.md).
+The project uses Electron, vanilla HTML/CSS/JavaScript, and Node's standard library. No frontend framework, database, server, or agent coordinator. Maintainers can build a draft and publish it through the **Release PocketDev** workflow using GitHub’s built-in token; no additional API token is needed. This publishes through this repository’s own marketplace, not Anthropic’s directory. See [contribution and release instructions](CONTRIBUTING.md) and the [release review](docs/release-review.md).
 
 ## License and attribution
 

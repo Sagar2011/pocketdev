@@ -3,6 +3,16 @@ name: Release PocketDev
 on:
   workflow_dispatch:
     inputs:
+      action:
+        description: Build a platform draft, or publish a tested draft to your marketplace users
+        required: true
+        type: choice
+        default: build
+        options: [build, publish]
+      tag:
+        description: 'Publish only: existing draft tag, e.g. v1.1.0 (resolve release blockers first)'
+        required: false
+        type: string
       platform:
         description: Build one unsigned beta platform
         required: true
@@ -19,7 +29,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.action == 'build'
     runs-on: ${{ inputs.platform }}
     timeout-minutes: 30
     outputs:
@@ -147,4 +157,72 @@ jobs:
           fi
           gh release upload "$TAG" "${files[@]}" --clobber
           url=$(gh release view "$TAG" --json url --jq .url)
-          printf 'Draft release: %s\n\nReview the downloads, then publish manually.\n' "$url" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Draft release: %s\n\nReview the downloads, then run this workflow with action=publish and the draft tag.\n' "$url" >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.action == 'publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # No checkout, npm install, or repository scripts with a write-enabled token.
+      - name: Validate and publish existing beta
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo 'Enter an existing version tag, e.g. v1.1.0.'; exit 1; }
+          version="${TAG#v}"
+          gh api --paginate "repos/$GH_REPO/releases" --jq '.[]' > releases.json
+          release=$(jq -s --arg tag "$TAG" '[.[] | select(.tag_name == $tag)][0] // empty' releases.json)
+          [[ -n "$release" ]] || { echo 'Build the draft first.'; exit 1; }
+          [[ $(jq -r '.draft' <<< "$release") == true ]] || { echo 'Release is already public; refusing to change it.'; exit 1; }
+          [[ $(jq -r '.target_commitish' <<< "$release") == "$SOURCE_SHA" ]] || { echo 'Draft does not match this main commit. Build a new version from current main.'; exit 1; }
+          gh api --paginate "repos/$GH_REPO/tags?per_page=100" --jq '.[]' > tags.json
+          tagged_sha=$(jq -sr --arg tag "$TAG" '[.[] | select(.name == $tag)][0].commit.sha // empty' tags.json)
+          [[ -z "$tagged_sha" || "$tagged_sha" == "$SOURCE_SHA" ]] || { echo 'Tag points to a different commit.'; exit 1; }
+          # Read manifests as data from the exact commit; never evaluate their contents.
+          for file in package.json plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json; do
+            gh api "repos/$GH_REPO/contents/$file?ref=$SOURCE_SHA" --jq .content | base64 --decode > "$(basename "$file")"
+          done
+          jq -e --arg version "$version" '.version == $version' package.json >/dev/null
+          jq -e --arg version "$version" '.version == $version and .name == "pocketdev"' plugin.json >/dev/null
+          jq -e --arg version "$version" '.name == "pocketdev-local" and any(.plugins[]; .name == "pocketdev" and .version == $version and .source == "./plugin")' marketplace.json >/dev/null
+          # Require at least one exact supported archive plus its checksum. Other platforms
+          # can be omitted deliberately, but unexpected or unpaired assets fail publication.
+          names=()
+          while IFS= read -r name; do names+=("$name"); done < <(jq -r '.assets[].name' <<< "$release")
+          (( ${#names[@]} > 0 )) || { echo 'Draft has no assets.'; exit 1; }
+          count=0
+          for name in "${names[@]}"; do
+            archive="${name%.sha256}"
+            case "$archive" in
+              "PocketDev-$version-mac-arm64.zip"|"PocketDev-$version-mac-x64.zip"|"PocketDev-$version-win-x64.zip"|"PocketDev-$version-linux-x64.AppImage") ;;
+              *) echo "Unexpected release asset: $name"; exit 1 ;;
+            esac
+            jq -e --arg name "$archive" 'any(.assets[]; .name == $name)' <<< "$release" >/dev/null
+            jq -e --arg name "$archive.sha256" 'any(.assets[]; .name == $name)' <<< "$release" >/dev/null
+            if [[ "$name" == "$archive" ]]; then
+              mkdir -p assets
+              gh release download "$TAG" --pattern "$archive" --pattern "$archive.sha256" --dir assets
+              expected=$(cat "assets/$archive.sha256")
+              [[ "$expected" =~ ^[a-f0-9]{64}$ ]] || { echo 'Invalid checksum.'; exit 1; }
+              actual=$(sha256sum "assets/$archive" | cut -d ' ' -f 1)
+              [[ "$expected" == "$actual" ]] || { echo 'Release checksum mismatch.'; exit 1; }
+              count=$((count + 1))
+            fi
+          done
+          (( count > 0 )) || { echo 'No platform archives verified.'; exit 1; }
+          gh release edit "$TAG" --draft=false --prerelease --latest=false
+          url=$(gh release view "$TAG" --json url --jq .url)
+          {
+            printf 'Published beta: %s\n\nVerified %s platform archive(s).\n\n' "$url" "$count"
+            printf 'Your GitHub repository is the marketplace. No separate registry upload or Anthropic token is required.\n\n'
+            printf 'Install in Claude Code:\n```text\n/plugin marketplace add %s\n/plugin install pocketdev@pocketdev-local\n```\n' "$GH_REPO"
+            printf '\nStart a new local Claude Code session. This does not submit to Anthropic’s directory or official marketplace.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
