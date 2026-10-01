@@ -17,6 +17,20 @@ function appearance(value) {
     $(`#${key}`).checked = value[key];
   document.body.classList.toggle("reduced-motion", !value.motion);
   $("#data-path").textContent = value.dataPath;
+  $("#desktop-section").hidden = !value.desktopSupported;
+  $("#claude-desktop").checked = value.claudeDesktop;
+  $("#observer-retry").disabled = !value.claudeDesktop;
+}
+function observerStatus(value) {
+  const labels = {
+    disabled: "Off. Claude Code hooks still work.", starting: "Connecting to Claude…",
+    'permission-required': "Accessibility access is required. Enable it in System Settings, then retry.",
+    'not-running': "Open Claude to follow a Cowork session.",
+    unavailable: "Could not read Claude’s status. Retry after checking Accessibility access.",
+    unsupported: "No supported Cowork status found. Open an English Cowork conversation.",
+    ok: "Connected locally to Claude Cowork."
+  };
+  $("#observer-status").textContent = labels[value] || labels.unavailable;
 }
 function status(value) {
   $("#connection-dot").classList.toggle("connected", value.connected);
@@ -45,6 +59,7 @@ const attempt = (fn) => async () => {
 };
 window.pocketdev.onAppearance(appearance);
 window.pocketdev.onStatus(status);
+window.pocketdev.onObserver(observerStatus);
 window.pocketdev.onProgress((pose) => {
   $("#progress").textContent =
     `Creating ${pose}… (${["waiting", "working", "done", "idle"].indexOf(pose) + 1}/4)`;
@@ -54,6 +69,7 @@ window.pocketdev
   .then((value) => {
     appearance(value.appearance);
     status(value.status);
+    observerStatus(value.observer);
   })
   .catch((error) => message(error.message, true));
 for (const button of document.querySelectorAll("[data-preview]"))
@@ -65,6 +81,12 @@ $("#permission-preview").addEventListener(
   "click",
   attempt(() => window.pocketdev.preview("permission")),
 );
+$("#claude-desktop").addEventListener("change", attempt(async () => {
+  observerStatus(await window.pocketdev.desktopObserver($("#claude-desktop").checked));
+}));
+$("#observer-retry").addEventListener("click", attempt(async () => {
+  observerStatus(await window.pocketdev.desktopObserver(true));
+}));
 $("#choose-photo").addEventListener(
   "click",
   attempt(async () => {

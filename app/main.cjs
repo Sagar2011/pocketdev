@@ -5,11 +5,13 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { home, displayState, readEvents, visibleEvents } = require('../plugin/scripts/state.cjs');
 const { POSES, imageMime, generatePoses, savePose } = require('./generate.cjs');
+const { createObserver } = require('./observer.cjs');
 
 app.setName('PocketDev');
 let avatar, settings, photo, generation, timer, demo;
 const dismissed = new Map();
-let prefs = { size: 120, motion: true, sound: true, workingSound: true, doneSound: true, avatarDir: null };
+let prefs = { size: 120, motion: true, sound: true, workingSound: true, doneSound: true, avatarDir: null, claudeDesktop: false };
+const observer = createObserver(app.isPackaged ? path.join(process.resourcesPath, 'claude-observer') : path.join(__dirname, '../build/native/claude-observer'));
 const root = home();
 // All launch paths and app versions share one instance lock for this data folder.
 app.setPath('userData', path.join(root, 'electron'));
@@ -48,13 +50,15 @@ function eventRevision(events) {
 }
 function currentState() {
   const events = readEvents(root);
-  const live = displayState(visibleEvents(events, dismissed));
-  if (demo && (demo.revision !== eventRevision(events) || live.state === 'permission')) demo = null;
+  const desktop = observer.state.events();
+  const live = displayState([...visibleEvents(events, dismissed), ...desktop]);
+  if (demo && (demo.revision !== eventRevision([...events, ...desktop]) || live.state === 'permission')) demo = null;
   if (demo && demo.until > Date.now()) return { state: demo.state, message: `Preview · ${demo.state}`, connected: false };
   return live;
 }
 function dismissReminder() {
   demo = null;
+  observer.state.dismiss();
   const now = Date.now();
   for (const event of readEvents(root)) dismissed.set(`${event.session}:${event.agent}`, now);
   const status = currentState();
@@ -71,7 +75,7 @@ async function appearance() {
       } catch { /* Fall back to the original mascot if a pack is missing. */ }
     }
   }
-  return { size: prefs.size, motion: prefs.motion, sound: prefs.sound, workingSound: prefs.workingSound, doneSound: prefs.doneSound, images: ['waiting', 'working', 'done'].every(pose => images[pose]) ? images : {}, dataPath: root };
+  return { size: prefs.size, motion: prefs.motion, sound: prefs.sound, workingSound: prefs.workingSound, doneSound: prefs.doneSound, images: ['waiting', 'working', 'done'].every(pose => images[pose]) ? images : {}, dataPath: root, claudeDesktop: prefs.claudeDesktop, desktopSupported: process.platform === 'darwin' };
 }
 
 async function broadcastAppearance() {
@@ -90,7 +94,17 @@ function resizeAvatar() {
 ipcMain.handle('initial', async event => {
   const win = event.sender === avatar?.webContents ? avatar : settings;
   guard(event, win);
-  return { appearance: await appearance(), status: currentState() };
+  return { appearance: await appearance(), status: currentState(), observer: observer.state.status };
+});
+ipcMain.handle('desktop-observer', async (event, enabled) => {
+  guard(event, settings);
+  if (typeof enabled !== 'boolean' || process.platform !== 'darwin') throw new Error('Desktop observation is available on macOS only.');
+  prefs.claudeDesktop = enabled;
+  savePrefs();
+  // Prompt only after the user explicitly enables or retries observation.
+  if (enabled) observer.start(true); else observer.stop();
+  await broadcastAppearance();
+  return observer.state.status;
 });
 ipcMain.handle('settings', event => { guard(event, avatar); openSettings(); });
 ipcMain.handle('dismiss', event => { guard(event, avatar); dismissReminder(); });
@@ -113,7 +127,7 @@ ipcMain.handle('preferences', async (event, update) => {
 ipcMain.handle('preview', (event, state) => {
   guard(event, settings);
   if (!['idle', 'waiting', 'working', 'done', 'permission', 'error'].includes(state)) throw new Error('Unknown state.');
-  demo = { state, until: Date.now() + (state === 'permission' ? 30000 : 5000), revision: eventRevision(readEvents(root)) };
+  demo = { state, until: Date.now() + (state === 'permission' ? 30000 : 5000), revision: eventRevision([...readEvents(root), ...observer.state.events()]) };
   avatar.webContents.send('status', currentState());
 });
 ipcMain.handle('photo', async event => {
@@ -195,6 +209,7 @@ else {
       const saved = JSON.parse(fs.readFileSync(prefsFile, 'utf8'));
       if (Number.isInteger(saved.size) && saved.size >= 48 && saved.size <= 120) prefs.size = saved.size;
       if (typeof saved.motion === 'boolean') prefs.motion = saved.motion;
+      prefs.claudeDesktop = saved.claudeDesktop === true && process.platform === 'darwin';
       for (const key of ['sound', 'workingSound', 'doneSound']) prefs[key] = typeof saved[key] === 'boolean' ? saved[key] : saved.sound !== false;
       if (typeof saved.avatarDir === 'string' && /^(custom|import)-[a-zA-Z0-9]+$/.test(saved.avatarDir)) prefs.avatarDir = saved.avatarDir;
     } catch { /* First launch. */ }
@@ -205,7 +220,13 @@ else {
       hasShadow: false, title: 'PocketDev', skipTaskbar: true }, 'avatar');
     avatar.on('closed', () => app.quit());
     let previous = '';
+    let previousObserver = '';
+    if (prefs.claudeDesktop) observer.start();
     timer = setInterval(() => {
+      if (previousObserver !== observer.state.status) {
+        previousObserver = observer.state.status;
+        if (settings && !settings.isDestroyed()) settings.webContents.send('observer', previousObserver);
+      }
       const status = currentState(), json = JSON.stringify(status);
       if (json !== previous) {
         previous = json;
@@ -219,6 +240,6 @@ else {
     if (!fs.existsSync(prefsFile)) { savePrefs(); if (!managed) openSettings(); }
     app.on('activate', openSettings);
   });
-  app.on('before-quit', () => { clearInterval(timer); generation?.abort(); });
+  app.on('before-quit', () => { clearInterval(timer); generation?.abort(); observer.stop(); });
   app.on('window-all-closed', () => app.quit());
 }

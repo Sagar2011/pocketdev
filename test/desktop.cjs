@@ -59,6 +59,13 @@ app.whenReady().then(async () => {
       await pause(100);
     }
     assert.ok(avatar && settings, 'Both windows load');
+    assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#claude-desktop").checked'), false, 'Observation must be opt-in');
+    assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#desktop-section").hidden'), process.platform !== 'darwin');
+    assert.equal(await avatar.webContents.executeJavaScript(`window.pocketdev.desktopObserver(true).then(() => false, error => /Untrusted request/.test(error.message))`), true, 'Avatar cannot request Accessibility access');
+    if (process.platform === 'darwin') {
+      await settings.webContents.executeJavaScript('window.pocketdev.desktopObserver(false)');
+      assert.equal(JSON.parse(fs.readFileSync(path.join(temp, 'preferences.json'), 'utf8')).claudeDesktop, false);
+    }
     assert.equal(avatar.getBounds().width, 120);
     assert.equal(avatar.getBounds().height, 120);
     assert.ok(await avatar.webContents.executeJavaScript('document.querySelector("#mascot").getBoundingClientRect().width <= 120'), 'Sprite strip cannot expand the desktop avatar beyond its window');

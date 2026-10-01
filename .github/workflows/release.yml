@@ -66,6 +66,9 @@ jobs:
           NODE
       - run: npm ci
       - run: npm test
+      - name: Native observer checks (macOS)
+        if: runner.os == 'macOS'
+        run: npm run test:observer-native
       - name: Desktop smoke test (macOS)
         if: runner.os == 'macOS'
         run: npm run test:desktop

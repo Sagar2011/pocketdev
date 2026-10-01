@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('pocketdev', {
   settings: () => ipcRenderer.invoke('settings'),
   menu: () => ipcRenderer.invoke('menu'),
   preferences: value => ipcRenderer.invoke('preferences', value),
+  desktopObserver: enabled => ipcRenderer.invoke('desktop-observer', enabled),
+  onObserver: callback => listen('observer', callback),
   preview: state => ipcRenderer.invoke('preview', state),
   photo: () => ipcRenderer.invoke('photo'),
   generate: key => ipcRenderer.invoke('generate', key),

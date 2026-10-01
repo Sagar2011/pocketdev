@@ -15,8 +15,13 @@
     "node": ">=22"
   },
   "scripts": {
+    "build:observer": "node scripts/build-observer.cjs",
+    "prestart": "npm run build:observer",
+    "prepack": "npm run build:observer",
+    "predist": "npm run build:observer",
     "start": "electron .",
-    "test": "node --test --test-concurrency=1 test/core.test.cjs test/runtime.test.cjs",
+    "test": "node --test --test-concurrency=1 test/core.test.cjs test/runtime.test.cjs test/observer.test.cjs",
+    "test:observer-native": "npm run build:observer && ./build/native/claude-observer --self-test",
     "test:desktop": "electron test/desktop.cjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --publish never",
@@ -42,6 +47,7 @@
       "LICENSE"
     ],
     "mac": {
+      "extraResources": [{ "from": "build/native/claude-observer", "to": "claude-observer" }],
       "target": [
         "zip"
       ],

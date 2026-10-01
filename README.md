@@ -35,7 +35,27 @@ The plugin needs a companion process to draw a desktop window. It starts that pr
 | Windows x64         | `PocketDev-VERSION-win-x64.zip`        | Native validation required          |
 | Linux x64           | `PocketDev-VERSION-linux-x64.AppImage` | Native validation required          |
 
-Only platforms with published assets are available. Regular Claude **Chat** tabs, SSH/cloud sessions, and remote containers are not supported. Linux needs desktop libraries required by Electron; AppImage extraction mode avoids requiring FUSE. Positioning and always-on-top behavior can vary under Wayland.
+Only platforms with published assets are available. The hook plugin supports local Claude Code sessions. The optional macOS observer below follows supported cloud-backed Cowork conversations through their local desktop UI. Websites, ChatGPT, SSH/remote containers without local hooks, and other Claude chat layouts are not supported. Linux needs desktop libraries required by Electron; AppImage extraction mode avoids requiring FUSE. Positioning and always-on-top behavior can vary under Wayland.
+
+### Claude desktop Cowork (experimental, macOS)
+
+This source branch adds an optional local observer for the English Claude Cowork interface. It needs no relay, account registration, API key or hosting subscription. It does not install hooks into Claude's cloud environment.
+
+1. Run a build containing this feature (`npm start` for development). An already-published older plugin/app will not contain it.
+2. Open the avatar's **···** settings and enable **Follow Claude’s cloud-backed Cowork sessions**.
+3. Grant Accessibility access in **System Settings → Privacy & Security → Accessibility** to the app/helper named by macOS, then click **Retry connection / request access**. Development builds may be listed as `claude-observer`; packaged builds may be attributed to PocketDev. Rebuilt unsigned helpers may need access granted again.
+4. Open a Cowork conversation in the Claude desktop app. The observer reads the current conversation in each available window, including minimized windows when Claude exposes them. It cannot track every hidden/background conversation or work after Claude quits.
+5. Disable the checkbox to stop the helper immediately. Quit PocketDev to stop all observation. You can also revoke Accessibility access in System Settings.
+
+Observed signals are responding, finished, question input, and the folder-access permission card. Other approval types/locales/layouts are unverified. Accessibility detection can break after Claude updates. A successful read by the development inspection tool does not prove a packaged build has access: validate the native helper on your Mac before relying on this feature.
+
+No screenshots or conversation history are saved or transmitted. The helper skips the message list and sidebar, matches UI labels transiently, and emits only a hashed conversation identifier, state, and minimized flag. These snapshots stay in memory. It never clicks, approves, dismisses, or submits anything in Claude. Missing access, unreadable windows, and stale observations stop that source's sounds instead of assuming success.
+
+Opening an old completed response does not celebrate. A response finishing after an observed active state celebrates once, then returns to idle. Questions remain silent; actual recognized folder-permission cards use the existing repeating knocks. Dismissal lasts until the observed state changes. Two consecutive requests with no observable transition may be indistinguishable; the avatar is a convenience, not an authoritative approval indicator.
+
+For cloud-only use, PocketDev must already be running (launch the companion manually). The existing automatic launch still comes from local Claude Code hooks; this feature does not add a login item or background service.
+
+Developer checks: `npm test`, `npm run test:desktop`, and, on macOS, `npm run test:observer-native`. macOS development/build machines need Xcode Command Line Tools. `npm start`, `npm run pack`, and `npm run dist` compile the native helper; release archives include it, so end users do not need Swift. Build macOS packages on matching-architecture runners. Native signal classification tests do not grant Accessibility access or inspect a live app.
 
 ## Everyday use
 

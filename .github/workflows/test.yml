@@ -32,3 +32,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:desktop
+      - run: npm run test:observer-native

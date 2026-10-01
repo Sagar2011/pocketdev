@@ -1,0 +1,11 @@
+const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+if (process.platform !== 'darwin') process.exit(0);
+const root = path.join(__dirname, '..');
+const dir = path.join(root, 'build/native');
+fs.mkdirSync(dir, { recursive: true });
+const arch = process.arch === 'arm64' ? 'arm64' : 'x86_64';
+const result = spawnSync('/usr/bin/xcrun', ['swiftc', '-O', '-target', `${arch}-apple-macosx12.0`, path.join(root, 'native/claude-observer.swift'), '-o', path.join(dir, 'claude-observer')], { stdio: 'inherit' });
+if (result.error) console.error(result.error.message);
+process.exit(result.status ?? 1);

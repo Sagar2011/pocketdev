@@ -12,6 +12,14 @@
     <button class="pose-card" data-preview="idle"><div class="mascot" data-state="idle"></div><strong>Snack break.</strong><span>Idle, eating chips</span></button>
   </section>
   <div class="connection"><span id="connection-dot"></span><span id="connection">Waiting for a Claude Code session</span><button id="permission-preview" class="text-button">Preview permission alert</button></div>
+  <section class="card compact" id="desktop-section" hidden>
+    <h2>Claude desktop · experimental</h2>
+    <label class="toggle"><input id="claude-desktop" type="checkbox"> Follow Claude’s cloud-backed Cowork sessions</label>
+    <p class="fineprint">Requires macOS Accessibility access. PocketDev reads status controls locally; it does not save conversation contents, send them to a server, or approve requests. Supports the English Cowork view, not every Claude chat or permission type.</p>
+    <p id="observer-status" role="status"></p>
+    <button id="observer-retry" class="secondary">Retry connection / request access</button>
+    <p class="fineprint">If access is requested, enable PocketDev (or claude-observer in development) in System Settings → Privacy &amp; Security → Accessibility, then retry here. Turn the checkbox off to stop observation.</p>
+  </section>
   <details class="card customization"><summary>Make it your mini-self <span class="muted">· optional</span></summary><div class="section-heading"><div><h2>Meet your mini-self</h2><p>One photo. Four poses. Your own little sidekick.</p></div><span class="number">01</span></div>
     <div class="photo-row"><button id="choose-photo" class="secondary">Choose a photo</button><img id="photo-preview" alt="Your selected reference photo" hidden><span id="photo-hint">PNG, JPEG, or WebP · up to 10 MB</span></div>
     <label for="api-key">OpenAI API key <span class="muted">· used for this request only</span></label><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your own API key">
@@ -34,6 +42,6 @@
     <p>For project or local installations, run uninstall from that project and add --scope project or --scope local. Start a new Claude Code session after changing plugin status. For a temporary --plugin-dir test, start Claude again without that flag.</p>
     <p>Disabling or uninstalling the plugin prevents future automatic starts. Quit the existing avatar too. Downloaded versions are in the runtime subfolder of the data folder below; you may remove that subfolder after quitting. Saved avatars and preferences are kept separately.</p>
   </details>
-  <footer><span>Claude Code terminal + local desktop Code sessions.<br>Regular Chat-tab monitoring is not supported yet.</span><span>PocketDev</span></footer>
+  <footer><span>Claude Code hooks + optional macOS Cowork observation.<br>ChatGPT and website monitoring are not included.</span><span>PocketDev</span></footer>
   <details><summary>Local data &amp; privacy</summary><p>Activity stays on this computer. No telemetry, conversation text, or command contents are collected. Generated and imported poses are saved here:</p><code id="data-path"></code><p>Import waiting.png, working.png, and done.png, plus optional idle.png. Older three-pose packs use their waiting image while idle. Use matching square transparent images. Choosing the default buddy keeps your saved files.</p></details>
 </main><script src="mascot.js"></script><script src="settings.js"></script></body></html>
