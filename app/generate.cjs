@@ -12,13 +12,79 @@ function imageMime(bytes) {
   throw new Error('Use a PNG, JPEG, or WebP image.');
 }
 
+// Image tools often leave a faint semi-transparent haze where the background should be clear.
+// Clean PNGs have partial alpha only along the character's edges; when much more of the image is
+// haze, clear it and stretch the remaining alpha so soft edges survive. Mutates the BGRA/RGBA
+// bitmap in place (premultiplied-safe) and reports whether it changed anything.
+function clearAlphaHaze(bitmap) {
+  let haze = 0;
+  for (let i = 3; i < bitmap.length; i += 4) if (bitmap[i] > 0 && bitmap[i] < 128) haze++;
+  if (haze / (bitmap.length / 4) < 0.2) return false;
+  for (let i = 0; i < bitmap.length; i += 4) {
+    const a = bitmap[i + 3], next = a <= 128 ? 0 : Math.round((a - 128) * 255 / 127), k = a ? next / a : 0;
+    bitmap[i] = Math.round(bitmap[i] * k); bitmap[i + 1] = Math.round(bitmap[i + 1] * k); bitmap[i + 2] = Math.round(bitmap[i + 2] * k);
+    bitmap[i + 3] = next;
+  }
+  return true;
+}
+
+// Generated sheets rarely put the gap between frames exactly at the centre, and the character
+// drifts between cells. Find the real gutters near the middle, then rebuild an even 2×2 grid with
+// every frame registered on its feet (the part that stays still). Returns null for non-sheets.
+function normalizeSheet(bitmap, width, height) {
+  if (width < 64 || Math.abs(width - height) > width * 0.02) return null;
+  const bg = bitmap.subarray(0, 4);
+  const filled = (x, y) => {
+    const i = (y * width + x) * 4;
+    return bitmap[i + 3] >= 128 && !(Math.abs(bitmap[i] - bg[0]) + Math.abs(bitmap[i + 1] - bg[1]) + Math.abs(bitmap[i + 2] - bg[2]) < 30 && Math.abs(bitmap[i + 3] - bg[3]) < 16);
+  };
+  const gutter = (length, other, count) => {
+    let best = 0, least = Infinity;
+    for (let p = Math.floor(length * 0.35); p < length * 0.65; p++) {
+      let n = 0;
+      for (let q = 0; q < other; q++) n += count(p, q);
+      if (n < least) { least = n; best = p; }
+    }
+    return least / other <= 0.03 ? best : -1;
+  };
+  const gx = gutter(width, height, (x, y) => filled(x, y)), gy = gutter(height, width, (y, x) => filled(x, y));
+  if (gx < 0 || gy < 0) return null;
+  const quads = [[0, 0, gx, gy], [gx, 0, width, gy], [0, gy, gx, height], [gx, gy, width, height]];
+  const frames = [];
+  for (const [x0, y0, x1, y1] of quads) {
+    let top = Infinity, bottom = -1, minX = Infinity, maxX = -1;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (filled(x, y)) { top = Math.min(top, y); bottom = y; minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
+    if (bottom < 0) return null; // Every frame needs a character.
+    let left = Infinity, right = -1;
+    const feet = Math.max(top, Math.round(bottom - (bottom - top) * 0.15));
+    for (let y = feet; y <= bottom; y++) for (let x = x0; x < x1; x++) if (filled(x, y)) { left = Math.min(left, x); right = Math.max(right, x); }
+    const anchor = (left + right) / 2;
+    frames.push({ x0, y0, x1, y1, bottom, anchor, tall: bottom - top, half: Math.max(anchor - minX, maxX - anchor) });
+  }
+  // Size cells to the largest frame (feet-centred) plus padding, so nothing is clipped or resampled.
+  const need = Math.max(...frames.map(f => Math.max(f.tall / 0.88, (f.half * 2) / 0.92)));
+  const cell = Math.ceil(Math.max(need, Math.max(width, height) / 2)), out = Buffer.alloc(cell * cell * 16);
+  for (const [k, { x0, y0, x1, y1, bottom, anchor }] of frames.entries()) {
+    const cx0 = (k % 2) * cell, cy0 = (k >> 1) * cell;
+    const dx = cx0 + Math.round(cell / 2 - anchor), dy = cy0 + Math.round(cell * 0.95) - bottom;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const tx = x + dx, ty = y + dy;
+      if (!filled(x, y) && bitmap[(y * width + x) * 4 + 3] === 0) continue;
+      if (tx < cx0 || ty < cy0 || tx >= cx0 + cell || ty >= cy0 + cell) continue;
+      bitmap.copy(out, (ty * cell * 2 + tx) * 4, (y * width + x) * 4, (y * width + x) * 4 + 4);
+    }
+  }
+  return { bitmap: out, width: cell * 2, height: cell * 2 };
+}
+
 // A 2×2 frame sheet (like the bundled buddy) has an empty gutter through both centre lines;
-// a single centred character crosses them. Empty = transparent or the corner background colour.
+// a single centred character crosses them. Empty = mostly transparent (a faint glow is fine)
+// or the corner background colour.
 function isFrameSheet(bitmap, width, height) {
   if (width < 64 || Math.abs(width - height) > width * 0.02) return false;
   const at = (x, y) => (y * width + x) * 4;
   const bg = bitmap.subarray(0, 4);
-  const empty = i => bitmap[i + 3] < 16 ||
+  const empty = i => bitmap[i + 3] < 128 ||
     (Math.abs(bitmap[i] - bg[0]) + Math.abs(bitmap[i + 1] - bg[1]) + Math.abs(bitmap[i + 2] - bg[2]) < 30 && Math.abs(bitmap[i + 3] - bg[3]) < 16);
   const cx = width >> 1, cy = height >> 1, side = Math.min(width, height);
   let hits = 0, total = 0;
@@ -85,4 +151,4 @@ async function savePose(dir, pose, bytes) {
   await fs.rename(`${file}.tmp`, file);
 }
 
-module.exports = { POSES, imageMime, isFrameSheet, generatePoses, savePose };
+module.exports = { POSES, imageMime, clearAlphaHaze, normalizeSheet, isFrameSheet, generatePoses, savePose };

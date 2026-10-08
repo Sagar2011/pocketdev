@@ -153,11 +153,12 @@ app.whenReady().then(async () => {
           window.applyMascot(mascot, {waiting: url, working: url, done: url}, 'working', {waiting: true, working: true, done: true});
           const film = mascot.querySelector('.sheet .pose-working .film');
           const result = {shown: getComputedStyle(mascot.querySelector('.sheet')).display !== 'none' && mascot.querySelector('.custom').hidden,
-            animation: getComputedStyle(film).animationName, image: getComputedStyle(film.lastElementChild).backgroundImage.includes('working.png')};
+            animation: getComputedStyle(film).animationName, image: film.querySelectorAll('img').length === 4 && film.lastElementChild.querySelector('img').src === url,
+            sized: film.firstElementChild.getBoundingClientRect().height >= mascot.getBoundingClientRect().height * 0.9};
           window.applyMascot(mascot, {}, 'working', {});
           return result;
         })()`);
-        assert.deepEqual(sheet, { shown: true, animation: 'work-frames', image: true }, 'Imported frame sheets play like the bundled buddy');
+        assert.deepEqual(sheet, { shown: true, animation: 'work-frames', image: true, sized: true }, 'Imported frame sheets play like the bundled buddy');
       }
       const capture = await avatar.webContents.capturePage();
       const bitmap = capture.toBitmap(), dimensions = capture.getSize();

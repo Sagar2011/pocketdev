@@ -56,8 +56,8 @@ window.mountMascot = (container) => {
       return `<div class="pose pose-${pose}"><div class="film">${frames}</div></div>`;
     })
     .join("");
-  // Imported 2×2 sheets reuse the bundled frame timings; cells read the pose image from --img.
-  const cells = '<i class="cell"></i>'.repeat(4);
+  // Imported 2×2 sheets reuse the bundled frame timings; each cell crops one quarter of the pose image.
+  const cells = '<i class="cell"><img alt=""></i>'.repeat(4);
   const sheets = Object.keys(buddyFrames)
     .map((pose) => `<div class="pose pose-${pose}"><div class="film">${cells}</div></div>`)
     .join("");
@@ -79,7 +79,7 @@ window.applyMascot = (container, images, state, sheets = {}) => {
     sheet.images = images; // A new appearance object means new pose files.
     for (const p of Object.keys(buddyFrames)) {
       const el = sheet.querySelector(`.pose-${p}`);
-      el.style.setProperty("--img", `url("${imageFor(p)}")`);
+      for (const img of el.querySelectorAll("img")) img.src = imageFor(p);
       // A pose given as one still image shows that image in all four frames.
       el.classList.toggle("still", !(images[p] ? sheets[p] : p === "idle" && sheets.waiting));
     }

@@ -4,7 +4,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { home, displayState, readEvents, visibleEvents } = require('../plugin/scripts/state.cjs');
-const { POSES, imageMime, isFrameSheet, generatePoses, savePose } = require('./generate.cjs');
+const { POSES, imageMime, clearAlphaHaze, normalizeSheet, isFrameSheet, generatePoses, savePose } = require('./generate.cjs');
 
 app.setName('PocketDev');
 let avatar, settings, photo, generation, timer, demo;
@@ -174,8 +174,13 @@ ipcMain.handle('import', async event => {
     if (!file) continue;
     if ((await fsp.stat(file)).size > 10 * 1024 * 1024) throw new Error('Each image must be smaller than 10 MB.');
     const bytes = await fsp.readFile(file);
-    if (imageMime(bytes) !== 'image/png' || nativeImage.createFromBuffer(bytes).isEmpty()) throw new Error('All poses must be valid PNG images.');
-    await savePose(dir, pose, bytes);
+    const image = nativeImage.createFromBuffer(bytes);
+    if (imageMime(bytes) !== 'image/png' || image.isEmpty()) throw new Error('All poses must be valid PNG images.');
+    const { width, height } = image.getSize(), bitmap = image.toBitmap();
+    const cleaned = clearAlphaHaze(bitmap), sheet = normalizeSheet(bitmap, width, height);
+    const png = sheet ? nativeImage.createFromBitmap(sheet.bitmap, { width: sheet.width, height: sheet.height }).toPNG()
+      : cleaned ? nativeImage.createFromBitmap(bitmap, { width, height }).toPNG() : bytes;
+    await savePose(dir, pose, png);
   }
   prefs.avatarDir = path.basename(dir); savePrefs(); await broadcastAppearance();
   return true;

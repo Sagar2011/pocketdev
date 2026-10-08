@@ -1,5 +1,5 @@
 .mascot { position: relative; aspect-ratio: 1; min-width: 0; min-height: 0; }
-.mascot .original, .mascot .custom { width: 100%; height: 100%; display: block; }
+.mascot .original, .mascot .sheet, .mascot .custom { width: 100%; height: 100%; display: block; }
 .mascot .custom { object-fit: contain; }
 .mascot .custom[hidden], .mascot .hidden { display: none; }
 .pose { display: none; width: 100%; height: 100%; overflow: hidden; }
@@ -7,11 +7,13 @@
 [data-state="working"] .pose-working, [data-state="done"] .pose-done, [data-state="idle"] .pose-idle { display: block; }
 .film { display: flex; width: 400%; height: 100%; }
 .sprite-frame { display: block; flex: 0 0 25%; min-width: 0; height: 100%; overflow: hidden; }
-.sheet .cell { display: block; flex: 0 0 25%; height: 100%; background: var(--img) no-repeat; background-size: 200% 200%; }
-.sheet .cell:nth-child(2) { background-position: 100% 0; }
-.sheet .cell:nth-child(3) { background-position: 0 100%; }
-.sheet .cell:nth-child(4) { background-position: 100% 100%; }
-.sheet .still .cell { background-size: contain; background-position: center; }
+/* Each cell crops one quarter of the sheet with an <img>; CSS backgrounds fail on multi-MB data URLs. */
+.sheet .cell { display: block; position: relative; overflow: hidden; flex: 0 0 25%; height: 100%; }
+.sheet .cell img { position: absolute; left: 0; top: 0; width: 200%; height: 200%; max-width: none; }
+.sheet .cell:nth-child(2) img { left: -100%; }
+.sheet .cell:nth-child(3) img { top: -100%; }
+.sheet .cell:nth-child(4) img { left: -100%; top: -100%; }
+.sheet .still .cell img { left: 0; top: 0; width: 100%; height: 100%; object-fit: contain; }
 .character, .custom { transform-origin: 50% 94%; animation: breathe 4s ease-in-out infinite; }
 .pose-waiting .film { animation: knock-frames 6s steps(1, end) infinite; }
 .pose-working .film { animation: work-frames 7s steps(1, end) infinite; }

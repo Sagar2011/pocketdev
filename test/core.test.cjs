@@ -243,3 +243,36 @@ test('imported poses are recognised as 2×2 frame sheets or single stills', () =
   }
   assert.equal(isFrameSheet(draw([0, 0, 0, 0], cells), size, size - 40), false, 'sheets must be square');
 });
+
+test('imported sheets: background haze is cleared and off-centre frames are re-registered on their feet', () => {
+  const { clearAlphaHaze, normalizeSheet, isFrameSheet } = require('../app/generate.cjs');
+  const size = 200;
+  const draw = (haze, boxes) => {
+    const bitmap = Buffer.alloc(size * size * 4);
+    for (let i = 3; i < bitmap.length; i += 4) bitmap[i] = haze;
+    for (const [x0, y0, x1, y1] of boxes)
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) bitmap.set([40, 60, 80, 255], (y * size + x) * 4);
+    return bitmap;
+  };
+  // Gutters at x=90 and y=80 (not the centre); each frame sits at a different offset in its cell.
+  const frames = [[20, 10, 60, 70], [120, 5, 160, 75], [30, 100, 70, 170], [110, 95, 150, 180]];
+  const hazy = draw(60, frames);
+  assert.equal(clearAlphaHaze(hazy), true, 'semi-transparent haze is detected');
+  assert.equal(hazy[3], 0, 'haze becomes fully transparent');
+  assert.equal(hazy[(20 * size + 30) * 4 + 3], 255, 'the character stays opaque');
+  assert.equal(clearAlphaHaze(draw(0, frames)), false, 'clean transparency is left alone');
+
+  assert.equal(isFrameSheet(hazy, size, size), false, 'off-centre gutters fail the plain centre-line check');
+  const sheet = normalizeSheet(hazy, size, size);
+  assert.ok(sheet && isFrameSheet(sheet.bitmap, sheet.width, sheet.height), 'normalised output is an even 2×2 sheet');
+  const cell = sheet.width / 2, feet = [];
+  for (let k = 0; k < 4; k++) {
+    const cx0 = (k % 2) * cell, cy0 = (k >> 1) * cell;
+    let bottom = -1, left = Infinity, right = -1;
+    for (let y = 0; y < cell; y++) for (let x = 0; x < cell; x++)
+      if (sheet.bitmap[((cy0 + y) * sheet.width + cx0 + x) * 4 + 3] === 255) { bottom = y; left = Math.min(left, x); right = Math.max(right, x); }
+    feet.push([bottom, Math.round((left + right) / 2)]);
+  }
+  assert.ok(feet.every(([b, c]) => Math.abs(b - feet[0][0]) <= 1 && Math.abs(c - feet[0][1]) <= 1), `frames share one foot position: ${JSON.stringify(feet)}`);
+  assert.equal(normalizeSheet(draw(0, [[60, 20, 140, 180]]), size, size), null, 'a single centred character is not a sheet');
+});
