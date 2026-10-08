@@ -9,7 +9,7 @@ const { POSES, imageMime, generatePoses, savePose } = require('./generate.cjs');
 app.setName('PocketDev');
 let avatar, settings, photo, generation, timer, demo;
 const dismissed = new Map();
-let prefs = { size: 120, motion: true, sound: true, workingSound: true, doneSound: true, avatarDir: null };
+let prefs = { size: 140, motion: true, sound: true, workingSound: true, doneSound: true, avatarDir: null };
 const root = home();
 // All launch paths and app versions share one instance lock for this data folder.
 app.setPath('userData', path.join(root, 'electron'));
@@ -105,7 +105,7 @@ ipcMain.handle('menu', event => {
 });
 ipcMain.handle('preferences', async (event, update) => {
   guard(event, settings);
-  if (Number.isInteger(update?.size) && update.size >= 48 && update.size <= 120) prefs.size = update.size;
+  if (Number.isInteger(update?.size) && update.size >= 48 && update.size <= 140) prefs.size = update.size;
   if (typeof update?.motion === 'boolean') prefs.motion = update.motion;
   for (const key of ['sound', 'workingSound', 'doneSound']) if (typeof update?.[key] === 'boolean') prefs[key] = update[key];
   savePrefs(); resizeAvatar(); await broadcastAppearance();
@@ -193,7 +193,7 @@ else {
     fs.mkdirSync(path.join(root, 'sessions'), { recursive: true, mode: 0o700 });
     try {
       const saved = JSON.parse(fs.readFileSync(prefsFile, 'utf8'));
-      if (Number.isInteger(saved.size) && saved.size >= 48 && saved.size <= 120) prefs.size = saved.size;
+      if (Number.isInteger(saved.size) && saved.size >= 48 && saved.size <= 140) prefs.size = saved.size;
       if (typeof saved.motion === 'boolean') prefs.motion = saved.motion;
       for (const key of ['sound', 'workingSound', 'doneSound']) prefs[key] = typeof saved[key] === 'boolean' ? saved[key] : saved.sound !== false;
       if (typeof saved.avatarDir === 'string' && /^(custom|import)-[a-zA-Z0-9]+$/.test(saved.avatarDir)) prefs.avatarDir = saved.avatarDir;

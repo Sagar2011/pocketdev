@@ -4,7 +4,7 @@ A small animated developer who keeps you company while Claude Code works.
 
 ![PocketDev's permission, working, done, and idle poses](docs/preview.png)
 
-PocketDev sits in a draggable **48–120 px** desktop window. It types while Claude works, knocks when permission is needed, jumps with a thumbs-up when a response finishes, and eats chips during a break. Use the included character or create a mini version of yourself from one photo.
+PocketDev sits in a draggable **48–140 px** desktop window. It types while Claude works, knocks when permission is needed, jumps with a thumbs-up when a response finishes, and eats chips during a break. Use the included character or create a mini version of yourself from one photo.
 
 **Release status: beta, not production-approved yet.** The current source includes two supplied audio recordings whose redistribution rights have not been verified. Public distribution is blocked until those rights are documented or the recordings are replaced. Builds are unsigned; Windows/Linux need native validation. See the [release review](docs/release-review.md).
 

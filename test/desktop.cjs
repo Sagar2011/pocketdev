@@ -59,9 +59,9 @@ app.whenReady().then(async () => {
       await pause(100);
     }
     assert.ok(avatar && settings, 'Both windows load');
-    assert.equal(avatar.getBounds().width, 120);
-    assert.equal(avatar.getBounds().height, 120);
-    assert.ok(await avatar.webContents.executeJavaScript('document.querySelector("#mascot").getBoundingClientRect().width <= 120'), 'Sprite strip cannot expand the desktop avatar beyond its window');
+    assert.equal(avatar.getBounds().width, 140);
+    assert.equal(avatar.getBounds().height, 140);
+    assert.ok(await avatar.webContents.executeJavaScript('document.querySelector("#mascot").getBoundingClientRect().width <= 140'), 'Sprite strip cannot expand the desktop avatar beyond its window');
     await pause(300);
     assert.equal(await avatar.webContents.executeJavaScript('typeof require'), 'undefined', 'Node is unavailable to renderer');
     assert.equal(await settings.webContents.executeJavaScript('document.querySelectorAll(".pose-card").length'), 4);
@@ -69,7 +69,7 @@ app.whenReady().then(async () => {
     assert.equal(avatar.getBounds().width, 80);
     assert.equal(await avatar.webContents.executeJavaScript('document.body.classList.contains("reduced-motion")'), true);
     assert.equal(await settings.webContents.executeJavaScript('document.querySelector("#sound").checked'), false);
-    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 120, motion: true})');
+    await settings.webContents.executeJavaScript('window.pocketdev.preferences({size: 140, motion: true})');
     // Test both OS motion preferences explicitly, independent of the CI runner's settings.
     avatar.webContents.debugger.attach('1.3');
     const motionPreference = value => avatar.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', {
@@ -195,7 +195,7 @@ app.whenReady().then(async () => {
     } finally { fsp.rename = originalRename; }
     const forbidden = await avatar.webContents.executeJavaScript(`window.pocketdev.preferences({size: 48}).then(() => false, error => /Untrusted request/.test(error.message))`);
     assert.equal(forbidden, true, 'Avatar renderer cannot invoke settings-only mutations');
-    assert.equal(avatar.getBounds().width, 120);
+    assert.equal(avatar.getBounds().width, 140);
     dialog.showOpenDialog = originalDialog; global.fetch = originalFetch;
     // Let the preview expire, then send the real CLI hook into the live companion.
     await pause(5100);

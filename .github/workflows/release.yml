@@ -1,6 +1,9 @@
 name: Release PocketDev
 
 on:
+  # Every push to main releases the current package version if it is not public yet.
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       action:
@@ -28,25 +31,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    if: github.ref == 'refs/heads/main' && (inputs.action == 'build' || inputs.action == 'build-and-publish')
-    runs-on: ${{ inputs.platform }}
-    timeout-minutes: 30
+  version:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
-    env:
-      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-    defaults:
-      run:
-        shell: bash
+      release: ${{ steps.published.outputs.release }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '22'
-          cache: npm
       - name: Validate release versions
         id: version
         run: |
@@ -64,6 +59,47 @@ jobs:
           assert.equal(lock.packages[''].version, pkg.version);
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${pkg.version}\n`);
           NODE
+      - name: Skip versions that are already public
+        id: published
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: v${{ steps.version.outputs.version }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          # A read-only token sees published releases only; drafts are handled by the draft job.
+          if [[ "$GITHUB_EVENT_NAME" == push && "$HEAD_MESSAGE" == *'[no release]'* ]]; then
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+            echo 'Skipped: head commit says [no release].' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$GITHUB_EVENT_NAME" == push ]] && gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null | grep -qx false; then
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+            printf '%s is already published. Bump the version in package.json, package-lock.json, plugin.json and marketplace.json to release.\n' "$TAG" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'release=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: version
+    if: >-
+      needs.version.outputs.release == 'true' &&
+      (github.event_name == 'push' || inputs.action == 'build' || inputs.action == 'build-and-publish')
+    # Pushes build the default platform; dispatch can pick another.
+    runs-on: ${{ inputs.platform || 'macos-15' }}
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
       - run: npm ci
       - run: npm test
       - name: Desktop smoke test (macOS)
@@ -94,7 +130,7 @@ jobs:
             dist/*.sha256
 
   draft:
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -110,7 +146,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          VERSION: ${{ needs.build.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -160,13 +196,14 @@ jobs:
           printf 'Draft release: %s\n\nFor build-and-publish, validation and publication follow automatically. For build-only, test the downloads and run action=publish with the draft tag.\n' "$url" >> "$GITHUB_STEP_SUMMARY"
 
   publish:
-    needs: [build, draft]
+    needs: [version, build, draft]
     # Explicit status check allows publish-only runs when build/draft are skipped,
-    # but a combined run must finish both jobs successfully before publishing.
+    # but a combined run (push or build-and-publish) must finish both jobs successfully first.
     if: >-
       ${{ !cancelled() && github.ref == 'refs/heads/main' &&
           (inputs.action == 'publish' ||
-           (inputs.action == 'build-and-publish' && needs.build.result == 'success' && needs.draft.result == 'success')) }}
+           ((github.event_name == 'push' || inputs.action == 'build-and-publish') &&
+            needs.build.result == 'success' && needs.draft.result == 'success')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -179,7 +216,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE_SHA: ${{ github.sha }}
-          TAG: ${{ inputs.action == 'build-and-publish' && format('v{0}', needs.build.outputs.version) || inputs.tag }}
+          TAG: ${{ (github.event_name == 'push' || inputs.action == 'build-and-publish') && format('v{0}', needs.version.outputs.version) || inputs.tag }}
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo 'Enter an existing version tag, e.g. v1.1.0.'; exit 1; }
