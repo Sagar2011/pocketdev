@@ -9,7 +9,7 @@
       "name": "pocketdev",
       "source": "./plugin",
       "description": "Your tiny animated Claude Code companion",
-      "version": "2.0.3"
+      "version": "2.0.4"
     }
   ]
 }

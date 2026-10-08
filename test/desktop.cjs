@@ -105,6 +105,19 @@ app.whenReady().then(async () => {
       const animation = { permission: ['.pose-waiting .film', 'knock-frames'], working: ['.pose-working .film', 'work-frames'], done: ['.pose-done .film', 'done-frames'], idle: ['.pose-idle .film', 'snack-frames'] }[state];
       if (animation) assert.equal(await avatar.webContents.executeJavaScript(`getComputedStyle(document.querySelector(${JSON.stringify(animation[0])})).animationName`), animation[1]);
       assert.equal(await avatar.webContents.executeJavaScript('document.body.dataset.state'), state);
+      // Imported poses are stills, so their own motion must be visible at avatar size.
+      const custom = { working: ['custom-type', 300], permission: ['custom-knock', 72] }[state];
+      if (custom) {
+        const moved = await avatar.webContents.executeJavaScript(`(() => {
+          const el = document.querySelector('.custom'); el.hidden = false;
+          const a = el.getAnimations().find(a => a.animationName === ${JSON.stringify(custom[0])});
+          if (!a) { el.hidden = true; return 0; }
+          a.pause(); a.currentTime = ${custom[1]};
+          const m = new DOMMatrix(getComputedStyle(el).transform); el.hidden = true;
+          return Math.max(Math.abs(m.m41), Math.abs(m.m42));
+        })()`);
+        assert.ok(moved >= 3, `Imported ${state} pose moves visibly (${moved}px)`);
+      }
       if (state === 'done') {
         const motion = await avatar.webContents.executeJavaScript(`(() => { const el = document.querySelector('.character'); const a = el.getAnimations().find(a => a.animationName === 'celebrate'); a.pause(); a.currentTime = 640; return {y: new DOMMatrix(getComputedStyle(el).transform).m42, iterations: a.effect.getTiming().iterations}; })()`);
         assert.ok(motion.y < -10, 'Done actually jumps above the ground');
@@ -126,6 +139,25 @@ app.whenReady().then(async () => {
         assert.equal(motion.iterations, Infinity);
         assert.equal(motion.custom, 'idle-sway');
         assert.equal(motion.reduced, 'none');
+      }
+      if (state === 'working') {
+        // The bundled sheets are the reference format for imported animated poses.
+        const { nativeImage } = require('electron');
+        const { isFrameSheet } = require('../app/generate.cjs');
+        for (const pose of ['waiting', 'working', 'done', 'idle']) {
+          const image = nativeImage.createFromPath(path.join(__dirname, `../app/assets/buddy/${pose}.png`)), { width, height } = image.getSize();
+          assert.equal(isFrameSheet(image.toBitmap(), width, height), true, `${pose} sheet is detected`);
+        }
+        const sheet = await avatar.webContents.executeJavaScript(`(() => {
+          const url = new URL('assets/buddy/working.png', location.href).href, mascot = document.querySelector('#mascot');
+          window.applyMascot(mascot, {waiting: url, working: url, done: url}, 'working', {waiting: true, working: true, done: true});
+          const film = mascot.querySelector('.sheet .pose-working .film');
+          const result = {shown: getComputedStyle(mascot.querySelector('.sheet')).display !== 'none' && mascot.querySelector('.custom').hidden,
+            animation: getComputedStyle(film).animationName, image: getComputedStyle(film.lastElementChild).backgroundImage.includes('working.png')};
+          window.applyMascot(mascot, {}, 'working', {});
+          return result;
+        })()`);
+        assert.deepEqual(sheet, { shown: true, animation: 'work-frames', image: true }, 'Imported frame sheets play like the bundled buddy');
       }
       const capture = await avatar.webContents.capturePage();
       const bitmap = capture.toBitmap(), dimensions = capture.getSize();

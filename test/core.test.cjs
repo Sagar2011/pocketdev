@@ -224,3 +224,22 @@ test('session scanning does not hide a permission behind more than 200 ended fil
     readEvents(root); assert.equal(fs.existsSync(stale),false);
   } finally { fs.rmSync(root,{recursive:true,force:true}); }
 });
+
+test('imported poses are recognised as 2×2 frame sheets or single stills', () => {
+  const { isFrameSheet } = require('../app/generate.cjs');
+  const size = 200;
+  const draw = (background, boxes) => {
+    const bitmap = Buffer.alloc(size * size * 4);
+    for (let i = 0; i < bitmap.length; i += 4) background.forEach((v, k) => { bitmap[i + k] = v; });
+    for (const [x0, y0, x1, y1] of boxes)
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) bitmap.set([40, 60, 80, 255], (y * size + x) * 4);
+    return bitmap;
+  };
+  const cells = [[10, 10, 90, 90], [110, 10, 190, 90], [10, 110, 90, 190], [110, 110, 190, 190]];
+  const single = [[60, 20, 140, 180]];
+  for (const background of [[0, 0, 0, 0], [255, 255, 255, 255]]) {
+    assert.equal(isFrameSheet(draw(background, cells), size, size), true, 'four padded frames');
+    assert.equal(isFrameSheet(draw(background, single), size, size), false, 'one centred character');
+  }
+  assert.equal(isFrameSheet(draw([0, 0, 0, 0], cells), size, size - 40), false, 'sheets must be square');
+});

@@ -1,6 +1,6 @@
 {
   "name": "pocketdev",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A tiny animated desktop companion for Claude Code. Make it your mini-self.",
   "main": "app/main.cjs",
   "license": "MIT",

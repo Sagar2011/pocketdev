@@ -56,17 +56,32 @@ window.mountMascot = (container) => {
       return `<div class="pose pose-${pose}"><div class="film">${frames}</div></div>`;
     })
     .join("");
-  container.innerHTML = `<div class="original character" role="img" aria-label="PocketDev textured mini developer">${poses}</div><img class="custom" alt="Your personalized mini avatar" hidden>`;
+  // Imported 2×2 sheets reuse the bundled frame timings; cells read the pose image from --img.
+  const cells = '<i class="cell"></i>'.repeat(4);
+  const sheets = Object.keys(buddyFrames)
+    .map((pose) => `<div class="pose pose-${pose}"><div class="film">${cells}</div></div>`)
+    .join("");
+  container.innerHTML = `<div class="original character" role="img" aria-label="PocketDev textured mini developer">${poses}</div><div class="sheet character hidden" role="img" aria-label="Your personalized mini avatar">${sheets}</div><img class="custom" alt="Your personalized mini avatar" hidden>`;
 };
-window.applyMascot = (container, images, state) => {
+window.applyMascot = (container, images, state, sheets = {}) => {
   const pose = ["working", "done", "idle"].includes(state) ? state : "waiting";
   container.dataset.state = state;
-  const custom = container.querySelector(".custom");
-  const image =
-    images?.[pose] || (pose === "idle" ? images?.waiting : undefined);
+  const imageFor = (p) => images?.[p] || (p === "idle" ? images?.waiting : undefined);
+  const animated = Object.values(sheets || {}).some(Boolean) && Boolean(images?.waiting);
+  const custom = container.querySelector(".custom"),
+    sheet = container.querySelector(".sheet");
+  const image = animated ? undefined : imageFor(pose);
   custom.hidden = !image;
-  container
-    .querySelector(".original")
-    .classList.toggle("hidden", Boolean(image));
+  sheet.classList.toggle("hidden", !animated);
+  container.querySelector(".original").classList.toggle("hidden", Boolean(image) || animated);
   if (image && custom.getAttribute("src") !== image) custom.src = image;
+  if (animated && sheet.images !== images) {
+    sheet.images = images; // A new appearance object means new pose files.
+    for (const p of Object.keys(buddyFrames)) {
+      const el = sheet.querySelector(`.pose-${p}`);
+      el.style.setProperty("--img", `url("${imageFor(p)}")`);
+      // A pose given as one still image shows that image in all four frames.
+      el.classList.toggle("still", !(images[p] ? sheets[p] : p === "idle" && sheets.waiting));
+    }
+  }
 };

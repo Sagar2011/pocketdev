@@ -7,6 +7,11 @@
 [data-state="working"] .pose-working, [data-state="done"] .pose-done, [data-state="idle"] .pose-idle { display: block; }
 .film { display: flex; width: 400%; height: 100%; }
 .sprite-frame { display: block; flex: 0 0 25%; min-width: 0; height: 100%; overflow: hidden; }
+.sheet .cell { display: block; flex: 0 0 25%; height: 100%; background: var(--img) no-repeat; background-size: 200% 200%; }
+.sheet .cell:nth-child(2) { background-position: 100% 0; }
+.sheet .cell:nth-child(3) { background-position: 0 100%; }
+.sheet .cell:nth-child(4) { background-position: 100% 100%; }
+.sheet .still .cell { background-size: contain; background-position: center; }
 .character, .custom { transform-origin: 50% 94%; animation: breathe 4s ease-in-out infinite; }
 .pose-waiting .film { animation: knock-frames 6s steps(1, end) infinite; }
 .pose-working .film { animation: work-frames 7s steps(1, end) infinite; }
@@ -15,8 +20,9 @@
 [data-state="done"] .character, [data-state="done"] .custom { animation: celebrate 1.6s ease-in-out infinite; }
 [data-state="idle"] .character, [data-state="idle"] .custom { animation: idle-sway 4.5s ease-in-out infinite; }
 [data-state="permission"] .character, [data-state="waiting"] .character { animation: excuse-me 6s ease-in-out infinite; }
-[data-state="working"] .custom { animation: busy .15s ease-in-out infinite alternate; }
-[data-state="permission"] .custom, [data-state="waiting"] .custom { animation: excuse-me 6s ease-in-out infinite; }
+/* Imported poses are single stills, so their motion must carry the state on its own. Percent units scale with avatar size. */
+[data-state="working"] .custom { animation: custom-type .3s ease-in-out infinite alternate; }
+[data-state="permission"] .custom, [data-state="waiting"] .custom { animation: custom-knock 6s ease-in-out infinite; }
 /* Hide the other cells instantly; interpolating between cells would slide the sheet. */
 @keyframes knock-frames {
   0%, 8%, 20%, 100% { transform: translateX(0); }
@@ -43,7 +49,10 @@
   60% { transform: translateX(-75%); }
 }
 @keyframes breathe { 50% { transform: translateY(-1px); } }
-@keyframes busy { to { transform: translateY(-1px) rotate(.5deg); } }
+@keyframes custom-type { to { transform: translateY(-2.5%) rotate(-1deg); } }
+/* Leans in on each knock sound (knock.js: impacts at 0s and 0.23s, every 6s), then waits impatiently. */
+@keyframes custom-knock { 0%, 2.5%, 6.5%, 100% { transform: translateX(0) rotate(0); } 1.2%, 5% { transform: translateX(4%) rotate(5deg); }
+  35% { transform: translateY(-2%) rotate(-1.5deg); } 65% { transform: translateY(0) rotate(1.5deg); } }
 @keyframes celebrate { 0%, 85%, 100% { transform: translateY(0); } 16% { transform: translateY(2px) scaleY(.97); } 38%, 48% { transform: translateY(-12px) rotate(-2deg); } 66% { transform: translateY(0) scaleY(.97); } }
 @keyframes excuse-me { 0%, 25%, 100% { transform: translateX(0) rotate(0); } 4% { transform: translateX(1px) rotate(1deg); } 14% { transform: translateX(2px) rotate(2deg); } 18% { transform: translateX(3px) rotate(3deg); } }
 @keyframes idle-sway { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-4px) rotate(1deg); } }

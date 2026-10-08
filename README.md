@@ -78,7 +78,7 @@ This optional feature uses `gpt-image-1.5` at medium quality. **It makes four pa
 
 **Stop** or closing settings cancels generation. Completed files stay in the local avatar folder; the existing avatar remains active on cancellation or failure. An in-flight provider request may still be billed. There are no automatic retries; trying again starts all four requests again.
 
-Custom packs contain four still poses with gentle motion, not full animated sprite sheets. The default buddy has four textured frame sequences with moving hands, head scratches, jumps, and chips. Likeness and consistency of generated images can vary.
+Generated packs contain four still poses with gentle motion. Imported poses can be single stills or 2×2 four-frame sheets like the default buddy; sheets are detected automatically and play with the same frame timings (moving hands, head scratches, chips). Likeness and consistency of generated images can vary.
 
 ### Import artwork without an API key
 

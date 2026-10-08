@@ -1,16 +1,18 @@
 const mascot = document.querySelector("#mascot");
 window.mountMascot(mascot);
 let images = {},
+  sheets = {},
   current = "idle",
   soundPrefs = {};
 const sounds = window.createActivitySounds();
 window.addEventListener("pagehide", () => sounds.stop());
 function appearance(value) {
   images = value.images;
+  sheets = value.sheets;
   soundPrefs = value;
   sounds.update(current, soundPrefs);
   document.body.classList.toggle("reduced-motion", !value.motion);
-  window.applyMascot(mascot, images, current);
+  window.applyMascot(mascot, images, current, sheets);
 }
 function status(value) {
   current = value.state;
@@ -22,7 +24,7 @@ function status(value) {
   document
     .querySelector("#customize")
     .setAttribute("aria-label", `${value.message}. Customize PocketDev`);
-  window.applyMascot(mascot, images, current);
+  window.applyMascot(mascot, images, current, sheets);
 }
 window.pocketdev.onAppearance(appearance);
 window.pocketdev.onStatus(status);

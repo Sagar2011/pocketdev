@@ -12,6 +12,23 @@ function imageMime(bytes) {
   throw new Error('Use a PNG, JPEG, or WebP image.');
 }
 
+// A 2×2 frame sheet (like the bundled buddy) has an empty gutter through both centre lines;
+// a single centred character crosses them. Empty = transparent or the corner background colour.
+function isFrameSheet(bitmap, width, height) {
+  if (width < 64 || Math.abs(width - height) > width * 0.02) return false;
+  const at = (x, y) => (y * width + x) * 4;
+  const bg = bitmap.subarray(0, 4);
+  const empty = i => bitmap[i + 3] < 16 ||
+    (Math.abs(bitmap[i] - bg[0]) + Math.abs(bitmap[i + 1] - bg[1]) + Math.abs(bitmap[i + 2] - bg[2]) < 30 && Math.abs(bitmap[i + 3] - bg[3]) < 16);
+  const cx = width >> 1, cy = height >> 1, side = Math.min(width, height);
+  let hits = 0, total = 0;
+  for (let d = -2; d <= 2; d++) for (let t = 0; t < side; t++) {
+    hits += empty(at(cx + d, t)) + empty(at(t, cy + d));
+    total += 2;
+  }
+  return hits / total >= 0.97;
+}
+
 async function generatePoses({ photo, mime, key, save, progress = () => {}, signal, fetchImpl = fetch }) {
   imageMime(photo);
   if (typeof key !== 'string' || !key.trim() || key.length > 1024 || /[\r\n]/.test(key)) throw new Error('Enter a valid OpenAI API key.');
@@ -68,4 +85,4 @@ async function savePose(dir, pose, bytes) {
   await fs.rename(`${file}.tmp`, file);
 }
 
-module.exports = { POSES, imageMime, generatePoses, savePose };
+module.exports = { POSES, imageMime, isFrameSheet, generatePoses, savePose };

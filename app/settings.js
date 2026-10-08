@@ -9,7 +9,7 @@ function message(text, error = false) {
 }
 function appearance(value) {
   for (const mascot of mascots)
-    window.applyMascot(mascot, value.images, mascot.dataset.state);
+    window.applyMascot(mascot, value.images, mascot.dataset.state, value.sheets);
   $("#size").value = value.size;
   $("#size-value").value = `${value.size} px`;
   $("#motion").checked = value.motion;

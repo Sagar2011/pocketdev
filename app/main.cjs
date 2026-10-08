@@ -4,7 +4,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { home, displayState, readEvents, visibleEvents } = require('../plugin/scripts/state.cjs');
-const { POSES, imageMime, generatePoses, savePose } = require('./generate.cjs');
+const { POSES, imageMime, isFrameSheet, generatePoses, savePose } = require('./generate.cjs');
 
 app.setName('PocketDev');
 let avatar, settings, photo, generation, timer, demo;
@@ -62,16 +62,20 @@ function dismissReminder() {
 }
 
 async function appearance() {
-  const images = {};
+  const images = {}, sheets = {};
   if (prefs.avatarDir) {
     for (const pose of POSES) {
       try {
         const bytes = await fsp.readFile(path.join(root, 'avatars', prefs.avatarDir, `${pose}.png`));
-        if (imageMime(bytes) === 'image/png') images[pose] = `data:image/png;base64,${bytes.toString('base64')}`;
+        if (imageMime(bytes) !== 'image/png') continue;
+        images[pose] = `data:image/png;base64,${bytes.toString('base64')}`;
+        const image = nativeImage.createFromBuffer(bytes), { width, height } = image.getSize();
+        sheets[pose] = isFrameSheet(image.toBitmap(), width, height);
       } catch { /* Fall back to the original mascot if a pack is missing. */ }
     }
   }
-  return { size: prefs.size, motion: prefs.motion, sound: prefs.sound, workingSound: prefs.workingSound, doneSound: prefs.doneSound, images: ['waiting', 'working', 'done'].every(pose => images[pose]) ? images : {}, dataPath: root };
+  const complete = ['waiting', 'working', 'done'].every(pose => images[pose]);
+  return { size: prefs.size, motion: prefs.motion, sound: prefs.sound, workingSound: prefs.workingSound, doneSound: prefs.doneSound, images: complete ? images : {}, sheets: complete ? sheets : {}, dataPath: root };
 }
 
 async function broadcastAppearance() {
